@@ -25,6 +25,12 @@ struct typoApp: App {
 // Puntero global para el callback de Carbon
 var globalAppDelegate: AppDelegate?
 
+// Custom NSPanel that can become key window
+class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
 // Manager para compartir el texto capturado
 class CapturedTextManager: ObservableObject {
     static let shared = CapturedTextManager()
@@ -184,8 +190,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Posicionar cerca del cursor o centro de pantalla
         if let screen = NSScreen.main {
             let screenRect = screen.visibleFrame
-            let windowWidth: CGFloat = 340
-            let windowHeight: CGFloat = 420
+            let windowWidth: CGFloat = 320
+            let windowHeight: CGFloat = 460
             let x = (screenRect.width - windowWidth) / 2 + screenRect.minX
             let y = (screenRect.height - windowHeight) / 2 + screenRect.minY
 
@@ -249,18 +255,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.openSettings()
         })
 
-        popoverWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 340, height: 420),
-            styleMask: [.borderless],
+        let panel = KeyablePanel(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 460),
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
 
-        popoverWindow?.isOpaque = false
-        popoverWindow?.backgroundColor = .clear
-        popoverWindow?.level = .floating
-        popoverWindow?.contentView = NSHostingView(rootView: contentView)
-        popoverWindow?.hasShadow = true
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.level = .floating
+        panel.contentView = NSHostingView(rootView: contentView)
+        panel.hasShadow = true
+        panel.isFloatingPanel = true
+        panel.becomesKeyOnlyIfNeeded = false
+
+        popoverWindow = panel
     }
 
     @objc func openSettings() {

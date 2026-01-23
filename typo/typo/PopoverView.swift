@@ -15,6 +15,7 @@ struct PopoverView: View {
     @State private var resultText: String?
     @State private var activeAction: Action?
     @State private var shouldScrollToSelection = false
+    @FocusState private var isSearchFocused: Bool
 
     var onClose: () -> Void
     var onOpenSettings: () -> Void
@@ -36,7 +37,7 @@ struct PopoverView: View {
                 mainView
             }
         }
-        .frame(width: 340)
+        .frame(width: 320)
         .background(Color(NSColor.windowBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
@@ -51,27 +52,23 @@ struct PopoverView: View {
     var mainView: some View {
         VStack(spacing: 0) {
             // Search bar
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                    .font(.system(size: 14))
-
-                TextField("Search actions...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 14))
-                    .onSubmit {
-                        selectCurrentAction()
-                    }
+            SearchBarView(
+                searchText: $searchText,
+                isSearchFocused: $isSearchFocused,
+                onSubmit: selectCurrentAction
+            )
+            .padding(.horizontal, 10)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isSearchFocused = true
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(NSColor.controlBackgroundColor))
-
-            Divider()
 
             // Actions list
             ScrollViewReader { proxy in
-                ScrollView {
+                ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 2) {
                         ForEach(Array(filteredActions.enumerated()), id: \.element.id) { index, action in
                             ActionRow(
@@ -90,35 +87,14 @@ struct PopoverView: View {
                         }
 
                         // New Action button
-                        HStack(spacing: 12) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(.accentColor)
-
-                            Text("New Action")
-                                .font(.nunitoRegularBold(size: 14))
-                                .foregroundColor(Color.gray)
-
-                            Spacer()
-
-                            HStack(spacing: 4) {
-                                KeyboardKey("⌘")
-                                KeyboardKey("N")
+                        NewActionRow(isSelected: filteredActions.count == selectedIndex)
+                            .onTapGesture {
+                                onOpenSettings()
                             }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(filteredActions.count == selectedIndex ? Color.accentColor.opacity(0.1) : Color.clear)
-                        )
-                        .onTapGesture {
-                            onOpenSettings()
-                        }
                     }
                     .padding(8)
                 }
-                .frame(maxHeight: 300)
+                .frame(maxHeight: 340)
                 .onChange(of: selectedIndex) { _, newValue in
                     if shouldScrollToSelection {
                         withAnimation(.easeOut(duration: 0.1)) {
@@ -317,17 +293,69 @@ struct PopoverView: View {
     }
 }
 
+// MARK: - Search Bar View
+
+struct SearchBarView: View {
+    @Environment(\.colorScheme) var colorScheme
+    @Binding var searchText: String
+    var isSearchFocused: FocusState<Bool>.Binding
+    var onSubmit: () -> Void
+
+    var backgroundColor: Color {
+        colorScheme == .light
+            ? Color(red: 241/255, green: 241/255, blue: 239/255)
+            : Color(white: 0.2)
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+                .font(.system(size: 14))
+
+            TextField("Search actions...", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.nunitoRegularBold(size: 14))
+                .focused(isSearchFocused)
+                .onSubmit {
+                    onSubmit()
+                }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(backgroundColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
+    }
+}
+
 // MARK: - Action Row
 
 struct ActionRow: View {
+    @Environment(\.colorScheme) var colorScheme
     let action: Action
     let isSelected: Bool
+
+    // Selected background color: light gray
+    var selectedBackgroundColor: Color {
+        if !isSelected {
+            return Color.clear
+        }
+        return colorScheme == .light
+            ? Color(red: 241/255, green: 241/255, blue: 239/255)
+            : Color(white: 0.2)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: action.icon)
                 .font(.system(size: 16))
-                .foregroundColor(isSelected ? .accentColor : .secondary)
+                .foregroundColor(.gray)
                 .frame(width: 24)
 
             Text(action.name)
@@ -347,7 +375,48 @@ struct ActionRow: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+                .fill(selectedBackgroundColor)
+        )
+    }
+}
+
+// MARK: - New Action Row
+
+struct NewActionRow: View {
+    @Environment(\.colorScheme) var colorScheme
+    let isSelected: Bool
+
+    var selectedBackgroundColor: Color {
+        if !isSelected {
+            return Color.clear
+        }
+        return colorScheme == .light
+            ? Color(red: 241/255, green: 241/255, blue: 239/255)
+            : Color(white: 0.2)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "plus.circle.fill")
+                .font(.system(size: 18))
+                .foregroundColor(Color(red: 0.0, green: 0.584, blue: 1.0))
+
+            Text("New Action")
+                .font(.nunitoRegularBold(size: 14))
+                .foregroundColor(Color.gray)
+
+            Spacer()
+
+            HStack(spacing: 4) {
+                KeyboardKey("⌘")
+                KeyboardKey("N")
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(selectedBackgroundColor)
         )
     }
 }
