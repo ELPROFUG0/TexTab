@@ -298,9 +298,9 @@ struct ActionListRow: View {
         HStack(spacing: 10) {
             // Icon
             Image(systemName: action.icon)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-                .frame(width: 20)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.gray)
+                .frame(width: 24)
 
             // Name
             Text(action.name.isEmpty ? "New Action" : action.name)
@@ -332,12 +332,8 @@ struct ActionEditorView: View {
     @State private var isImprovingPrompt = false
     @State private var recordedKeys: [String] = []
     @State private var isSaved = false
-
-    let iconOptions = [
-        "pencil", "arrow.triangle.2.circlepath", "arrow.down.left.and.arrow.up.right",
-        "doc.text", "globe", "globe.americas", "star", "bolt", "wand.and.stars",
-        "text.bubble", "checkmark.circle", "lightbulb", "brain"
-    ]
+    @State private var showIconPicker = false
+    @State private var isNameFocused = false
 
     // Input background color: #f1f1ef for light mode, controlBackgroundColor for dark mode
     var inputBackgroundColor: Color {
@@ -347,39 +343,40 @@ struct ActionEditorView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header with icon and name
-                    HStack(spacing: 12) {
-                        Menu {
-                            ForEach(iconOptions, id: \.self) { icon in
-                                Button(action: {
-                                    action.icon = icon
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Header with icon and name
+                        HStack(spacing: 12) {
+                            // Custom Icon Picker Button
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    showIconPicker.toggle()
+                                }
+                            }) {
+                                Image(systemName: action.icon)
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.gray)
+                                    .frame(width: 36, height: 36)
+                            }
+                            .buttonStyle(.plain)
+
+                            TextField("New Action", text: $action.name, onEditingChanged: { editing in
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                                    isNameFocused = editing
+                                }
+                            })
+                                .textFieldStyle(.plain)
+                                .font(.nunitoBold(size: 22))
+                                .scaleEffect(isNameFocused ? 1.05 : 1.0, anchor: .leading)
+                                .onChange(of: action.name) { _, _ in
                                     onSave(action)
                                     showSaved()
-                                }) {
-                                    Label(icon, systemImage: icon)
                                 }
-                            }
-                        } label: {
-                            Image(systemName: action.icon)
-                                .font(.system(size: 20))
-                                .foregroundColor(.secondary)
-                                .frame(width: 36, height: 36)
+
+                            Spacer()
                         }
-                        .menuStyle(.borderlessButton)
-
-                        TextField("New Action", text: $action.name)
-                            .textFieldStyle(.plain)
-                            .font(.nunitoBold(size: 22))
-                            .onChange(of: action.name) { _, _ in
-                                onSave(action)
-                                showSaved()
-                            }
-
-                        Spacer()
-                    }
 
                     // Shortcut field with tooltip
                     VStack(spacing: 0) {
@@ -496,31 +493,58 @@ struct ActionEditorView: View {
                 .padding(24)
             }
 
-            // Footer with Delete and Saved buttons
-            HStack {
-                Button(action: onDelete) {
-                    Text("Delete")
+                // Footer with Delete and Saved buttons
+                HStack {
+                    Button(action: onDelete) {
+                        Text("Delete")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    // Saved button
+                    Text(isSaved ? "Saved" : "Saved")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.red)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(red: 0.0, green: 0.584, blue: 1.0))
+                        )
                 }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                // Saved button
-                Text(isSaved ? "Saved" : "Saved")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(red: 0.0, green: 0.584, blue: 1.0))
-                    )
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
+                .background(Color(NSColor.windowBackgroundColor))
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            .background(Color(NSColor.windowBackgroundColor))
+
+            // Floating Icon Picker - above everything
+            if showIconPicker {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            showIconPicker = false
+                        }
+                    }
+
+                IconPickerView(
+                    selectedIcon: action.icon,
+                    onSelect: { icon in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            action.icon = icon
+                            onSave(action)
+                            showSaved()
+                            showIconPicker = false
+                        }
+                    }
+                )
+                .fixedSize()
+                .offset(x: 24, y: 68)
+                .transition(.opacity)
+            }
         }
         .onAppear {
             // Initialize recorded keys from existing shortcut
@@ -683,6 +707,112 @@ struct TooltipArrow: Shape {
         path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
         path.closeSubpath()
         return path
+    }
+}
+
+// MARK: - Icon Picker View
+
+struct IconPickerView: View {
+    @Environment(\.colorScheme) var colorScheme
+    let selectedIcon: String
+    let onSelect: (String) -> Void
+
+    @State private var hoveredIcon: String?
+
+    // Icon list with more categories
+    let icons: [String] = [
+        // Writing
+        "pencil", "pencil.line", "highlighter", "scribble.variable", "signature", "text.cursor",
+        // Communication
+        "text.bubble", "bubble.left", "quote.bubble", "captions.bubble", "ellipsis.message", "phone",
+        // Hands
+        "hand.raised.fill", "hand.thumbsup.fill", "hand.thumbsdown.fill", "hand.point.right.fill", "hand.wave.fill", "hands.clap.fill",
+        // People
+        "person.fill", "person.2.fill", "person.3.fill", "figure.stand", "figure.walk", "figure.run",
+        // Actions
+        "bolt.fill", "wand.and.stars", "sparkles", "star.fill", "heart.fill", "flame.fill",
+        // Documents
+        "doc.text.fill", "doc.plaintext.fill", "list.bullet", "checklist", "bookmark.fill", "tag.fill",
+        // Ideas
+        "lightbulb.fill", "brain", "eye.fill", "face.smiling.fill", "moon.fill", "sun.max.fill",
+        // Tools
+        "gearshape.fill", "wrench.and.screwdriver.fill", "hammer.fill", "paintbrush.fill", "scissors", "waveform",
+        // Symbols
+        "checkmark.circle.fill", "xmark.circle.fill", "exclamationmark.triangle.fill", "info.circle.fill", "questionmark.circle.fill", "bell.fill",
+        // Arrows
+        "arrow.triangle.2.circlepath", "arrow.clockwise", "repeat", "shuffle", "arrow.up.circle.fill", "arrow.down.circle.fill",
+        // Objects
+        "cup.and.saucer.fill", "gift.fill", "bag.fill", "cart.fill", "creditcard.fill", "building.2.fill"
+    ]
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 6), count: 6), spacing: 6) {
+                ForEach(icons, id: \.self) { icon in
+                    IconButton(
+                        icon: icon,
+                        isSelected: selectedIcon == icon,
+                        isHovered: hoveredIcon == icon,
+                        colorScheme: colorScheme
+                    )
+                    .onTapGesture {
+                        onSelect(icon)
+                    }
+                    .onHover { hovering in
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            hoveredIcon = hovering ? icon : nil
+                        }
+                    }
+                }
+            }
+            .padding(12)
+        }
+        .frame(width: 300, height: 220)
+        .background(Color(NSColor.windowBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+    }
+}
+
+struct IconButton: View {
+    let icon: String
+    let isSelected: Bool
+    let isHovered: Bool
+    let colorScheme: ColorScheme
+
+    var backgroundColor: Color {
+        if isSelected {
+            return Color.gray.opacity(0.3)
+        } else if isHovered {
+            return colorScheme == .light
+                ? Color(white: 0.9)
+                : Color(white: 0.25)
+        }
+        return Color.clear
+    }
+
+    var iconColor: Color {
+        return Color.gray
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(backgroundColor)
+                .frame(width: 44, height: 44)
+
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .heavy))
+                .foregroundColor(iconColor)
+                .scaleEffect(isHovered && !isSelected ? 1.15 : 1.0)
+        }
+        .frame(width: 44, height: 44)
+        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isHovered)
+        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
     }
 }
 
