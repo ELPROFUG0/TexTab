@@ -336,7 +336,7 @@ struct PopoverView: View {
 
             Divider()
 
-            // Footer hints
+            // Footer with buttons
             HStack {
                 HStack(spacing: 4) {
                     KeyboardKey("esc")
@@ -347,32 +347,21 @@ struct PopoverView: View {
 
                 Spacer()
 
-                HStack(spacing: 4) {
-                    KeyboardKey("⌘")
-                    KeyboardKey("C")
-                    Text("copy")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                HStack(spacing: 8) {
+                    Button("Copy") {
+                        copyToClipboard(result)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Replace") {
+                        replaceOriginalText(with: result)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(Color(NSColor.controlBackgroundColor))
-
-            // Action buttons
-            HStack(spacing: 12) {
-                Button("Copy") {
-                    copyToClipboard(result)
-                }
-                .buttonStyle(.bordered)
-
-                Button("Copy & Close") {
-                    copyToClipboard(result)
-                    onClose()
-                }
-                .buttonStyle(.borderedProminent)
-            }
-            .padding(16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onKeyPress(.escape) {
@@ -431,6 +420,32 @@ struct PopoverView: View {
     func copyToClipboard(_ text: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    func replaceOriginalText(with text: String) {
+        // Copy the result to clipboard
+        copyToClipboard(text)
+
+        // Close the popup first
+        onClose()
+
+        // Small delay to let the popup close and focus return to original app
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Simulate Cmd+V to paste
+            let source = CGEventSource(stateID: .combinedSessionState)
+
+            // Key down V with Cmd
+            let vDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // V key
+            vDown?.flags = .maskCommand
+
+            // Key up V
+            let vUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+            vUp?.flags = .maskCommand
+
+            // Post events
+            vDown?.post(tap: .cgSessionEventTap)
+            vUp?.post(tap: .cgSessionEventTap)
+        }
     }
 }
 
