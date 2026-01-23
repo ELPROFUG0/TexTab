@@ -96,11 +96,13 @@ struct GeneralSettingsView: View {
                     .foregroundColor(.secondary)
             } header: {
                 Text("API Configuration")
+                    .font(.nunitoBold(size: 13))
             }
 
             Section {
                 HStack {
                     Text("Global Shortcut")
+                        .font(.nunitoBold(size: 14))
                     Spacer()
                     Text("⌘ + ⇧ + T")
                         .foregroundColor(.secondary)
@@ -113,13 +115,14 @@ struct GeneralSettingsView: View {
                 Toggle("Launch at Login", isOn: $launchAtLogin)
             } header: {
                 Text("Preferences")
+                    .font(.nunitoBold(size: 13))
             }
 
             Section {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Accessibility Permission")
-                            .font(.body)
+                            .font(.nunitoBold(size: 14))
                         Text("Required for global keyboard shortcuts to work")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -133,6 +136,7 @@ struct GeneralSettingsView: View {
                 }
             } header: {
                 Text("Permissions")
+                    .font(.nunitoBold(size: 13))
             }
         }
         .formStyle(.grouped)
@@ -183,7 +187,7 @@ struct ActionsSettingsView: View {
                     addNewAction()
                 }
             }
-            .frame(width: 180)
+            .frame(width: 220)
             .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
 
             Divider()
@@ -292,21 +296,6 @@ struct ActionListRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            // Drag dots
-            VStack(spacing: 2) {
-                ForEach(0..<3, id: \.self) { _ in
-                    HStack(spacing: 2) {
-                        Circle()
-                            .fill(Color.gray.opacity(0.4))
-                            .frame(width: 3, height: 3)
-                        Circle()
-                            .fill(Color.gray.opacity(0.4))
-                            .frame(width: 3, height: 3)
-                    }
-                }
-            }
-            .opacity(0.6)
-
             // Icon
             Image(systemName: action.icon)
                 .font(.system(size: 14))
