@@ -93,6 +93,66 @@ class AIService {
         }
     }
 
+    // MARK: - Web Search using Perplexity
+    func webSearch(prompt: String, query: String, apiKey: String) async throws -> String {
+        guard !apiKey.isEmpty else {
+            return "[Error] Perplexity API key not configured. Go to Settings > Web Search to add your key."
+        }
+
+        let url = URL(string: "https://api.perplexity.ai/chat/completions")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Enhanced system prompt for better formatted results
+        let enhancedPrompt = """
+        \(prompt)
+
+        Format your response using markdown:
+        - Use **bold** for important terms
+        - Include relevant links as [link text](url)
+        - Use bullet points for lists
+        - Use headers (##) to organize sections if needed
+        - When relevant, include image URLs using markdown format: ![description](image_url)
+        - Be concise but informative
+        """
+
+        let body: [String: Any] = [
+            "model": "sonar",
+            "messages": [
+                ["role": "system", "content": enhancedPrompt],
+                ["role": "user", "content": query]
+            ],
+            "max_tokens": 4000,
+            "temperature": 0.2
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIError.invalidResponse
+        }
+
+        if httpResponse.statusCode != 200 {
+            if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: data) {
+                throw AIError.apiError(errorResponse.error.message)
+            }
+            throw AIError.httpError(httpResponse.statusCode)
+        }
+
+        let decoded = try JSONDecoder().decode(OpenAIResponse.self, from: data)
+
+        guard let content = decoded.choices.first?.message.content else {
+            throw AIError.noContent
+        }
+
+        return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     // MARK: - OpenAI Compatible APIs (OpenAI, OpenRouter, Perplexity, Groq)
 
     private func callOpenAICompatible(prompt: String, text: String, apiKey: String, provider: AIProvider) async throws -> String {

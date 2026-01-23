@@ -87,6 +87,7 @@ struct TabTextButton: View {
 struct GeneralSettingsView: View {
     @StateObject private var store = ActionsStore.shared
     @State private var apiKeyInput: String = ""
+    @State private var perplexityApiKeyInput: String = ""
     @State private var launchAtLogin = false
     @State private var selectedProvider: AIProvider = .openai
 
@@ -120,6 +121,24 @@ struct GeneralSettingsView: View {
                     .foregroundColor(.secondary)
             } header: {
                 Text("API Configuration")
+                    .font(.nunitoBold(size: 13))
+            }
+
+            Section {
+                SecureField("Perplexity API Key", text: $perplexityApiKeyInput)
+                    .textFieldStyle(.roundedBorder)
+                    .onAppear {
+                        perplexityApiKeyInput = store.perplexityApiKey
+                    }
+                    .onChange(of: perplexityApiKeyInput) { _, newValue in
+                        store.savePerplexityApiKey(newValue)
+                    }
+
+                Text("Required for web search actions. Get your key from perplexity.ai/settings/api")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("Web Search (Perplexity)")
                     .font(.nunitoBold(size: 13))
             }
 
@@ -524,6 +543,37 @@ struct ActionEditorView: View {
                         .padding(.horizontal, 12)
                         .padding(.bottom, 10)
                     }
+                    .background(inputBackgroundColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                    )
+
+                    // Web Search Toggle
+                    HStack {
+                        Toggle(isOn: $action.isWebSearch) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(action.isWebSearch ? .accentColor : textGrayColor)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Web Search")
+                                        .font(.nunitoRegularBold(size: 14))
+                                        .foregroundColor(textGrayColor)
+                                    Text("Uses Perplexity to search the web for up-to-date information")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .toggleStyle(.switch)
+                        .onChange(of: action.isWebSearch) { _, _ in
+                            hasUnsavedChanges = true
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
                     .background(inputBackgroundColor)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(

@@ -12,13 +12,30 @@ struct Action: Identifiable, Codable, Equatable, Hashable {
     var icon: String
     var prompt: String
     var shortcut: String
+    var isWebSearch: Bool
 
-    init(id: UUID = UUID(), name: String, icon: String, prompt: String, shortcut: String = "") {
+    init(id: UUID = UUID(), name: String, icon: String, prompt: String, shortcut: String = "", isWebSearch: Bool = false) {
         self.id = id
         self.name = name
         self.icon = icon
         self.prompt = prompt
         self.shortcut = shortcut
+        self.isWebSearch = isWebSearch
+    }
+
+    // Custom decoding to handle existing actions without isWebSearch
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        icon = try container.decode(String.self, forKey: .icon)
+        prompt = try container.decode(String.self, forKey: .prompt)
+        shortcut = try container.decodeIfPresent(String.self, forKey: .shortcut) ?? ""
+        isWebSearch = try container.decodeIfPresent(Bool.self, forKey: .isWebSearch) ?? false
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, icon, prompt, shortcut, isWebSearch
     }
 }
 
@@ -26,10 +43,12 @@ class ActionsStore: ObservableObject {
     @Published var actions: [Action] = []
     @Published var apiKey: String = ""
     @Published var selectedProvider: AIProvider = .openai
+    @Published var perplexityApiKey: String = ""
 
     private let actionsKey = "typo_actions"
     private let apiKeyKey = "typo_api_key"
     private let providerKey = "typo_provider"
+    private let perplexityApiKeyKey = "typo_perplexity_api_key"
 
     static let shared = ActionsStore()
 
@@ -37,6 +56,7 @@ class ActionsStore: ObservableObject {
         loadActions()
         loadApiKey()
         loadProvider()
+        loadPerplexityApiKey()
     }
 
     func loadActions() {
@@ -75,6 +95,15 @@ class ActionsStore: ObservableObject {
     func saveProvider(_ provider: AIProvider) {
         selectedProvider = provider
         UserDefaults.standard.set(provider.rawValue, forKey: providerKey)
+    }
+
+    func loadPerplexityApiKey() {
+        perplexityApiKey = UserDefaults.standard.string(forKey: perplexityApiKeyKey) ?? ""
+    }
+
+    func savePerplexityApiKey(_ key: String) {
+        perplexityApiKey = key
+        UserDefaults.standard.set(key, forKey: perplexityApiKeyKey)
     }
 
     func addAction(_ action: Action) {

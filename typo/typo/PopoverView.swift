@@ -304,6 +304,12 @@ struct PopoverView: View {
                     .background(Color.accentColor.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
+                if action.isWebSearch {
+                    Image(systemName: "globe")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+
                 Spacer()
 
                 Button(action: {
@@ -325,12 +331,19 @@ struct PopoverView: View {
 
             // Result content - expands to fill available space
             ScrollView {
-                Text(result)
-                    .font(.system(size: 14))
-                    .lineSpacing(6)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
+                if action.isWebSearch {
+                    // Render markdown for web search results
+                    MarkdownTextView(text: result)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                } else {
+                    Text(result)
+                        .font(.system(size: 14))
+                        .lineSpacing(6)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -353,10 +366,12 @@ struct PopoverView: View {
                     }
                     .buttonStyle(.bordered)
 
-                    Button("Replace") {
-                        replaceOriginalText(with: result)
+                    if !action.isWebSearch {
+                        Button("Replace") {
+                            replaceOriginalText(with: result)
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .buttonStyle(.borderedProminent)
                 }
             }
             .padding(.horizontal, 16)
@@ -398,12 +413,23 @@ struct PopoverView: View {
 
         Task {
             do {
-                let result = try await AIService.shared.processText(
-                    prompt: action.prompt,
-                    text: textToProcess,
-                    apiKey: store.apiKey,
-                    provider: store.selectedProvider
-                )
+                let result: String
+                if action.isWebSearch {
+                    // Use Perplexity for web search
+                    result = try await AIService.shared.webSearch(
+                        prompt: action.prompt,
+                        query: textToProcess,
+                        apiKey: store.perplexityApiKey
+                    )
+                } else {
+                    // Use regular AI provider
+                    result = try await AIService.shared.processText(
+                        prompt: action.prompt,
+                        text: textToProcess,
+                        apiKey: store.apiKey,
+                        provider: store.selectedProvider
+                    )
+                }
                 await MainActor.run {
                     resultText = result
                     isProcessing = false
@@ -514,6 +540,12 @@ struct ActionRow: View {
                 .font(.nunitoRegularBold(size: 14))
                 .foregroundColor(Color.gray)
 
+            if action.isWebSearch {
+                Image(systemName: "globe")
+                    .font(.system(size: 10))
+                    .foregroundColor(.accentColor)
+            }
+
             Spacer()
 
             if !action.shortcut.isEmpty {
@@ -572,6 +604,331 @@ struct NewActionRow: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(selectedBackgroundColor)
         )
+    }
+}
+
+// MARK: - Markdown Text View
+
+struct MarkdownTextView: View {
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(parseMarkdown(text).enumerated()), id: \.offset) { _, element in
+                element
+            }
+        }
+    }
+
+    func parseMarkdown(_ text: String) -> [AnyView] {
+        var views: [AnyView] = []
+        let lines = text.components(separatedBy: "\n")
+        var currentParagraph = ""
+
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+
+            // Check for standalone image ![alt](url)
+            if let imageView = parseImageLine(trimmedLine) {
+                if !currentParagraph.isEmpty {
+                    views.append(AnyView(paragraphView(currentParagraph)))
+                    currentParagraph = ""
+                }
+                views.append(imageView)
+            }
+            // Headers
+            else if trimmedLine.hasPrefix("### ") {
+                if !currentParagraph.isEmpty {
+                    views.append(AnyView(paragraphView(currentParagraph)))
+                    currentParagraph = ""
+                }
+                let headerText = String(trimmedLine.dropFirst(4))
+                views.append(AnyView(
+                    Text(headerText)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.primary)
+                        .padding(.top, 8)
+                ))
+            } else if trimmedLine.hasPrefix("## ") {
+                if !currentParagraph.isEmpty {
+                    views.append(AnyView(paragraphView(currentParagraph)))
+                    currentParagraph = ""
+                }
+                let headerText = String(trimmedLine.dropFirst(3))
+                views.append(AnyView(
+                    Text(headerText)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.primary)
+                        .padding(.top, 10)
+                ))
+            } else if trimmedLine.hasPrefix("# ") {
+                if !currentParagraph.isEmpty {
+                    views.append(AnyView(paragraphView(currentParagraph)))
+                    currentParagraph = ""
+                }
+                let headerText = String(trimmedLine.dropFirst(2))
+                views.append(AnyView(
+                    Text(headerText)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.primary)
+                        .padding(.top, 12)
+                ))
+            }
+            // Bullet points
+            else if trimmedLine.hasPrefix("- ") || trimmedLine.hasPrefix("* ") {
+                if !currentParagraph.isEmpty {
+                    views.append(AnyView(paragraphView(currentParagraph)))
+                    currentParagraph = ""
+                }
+                let bulletText = String(trimmedLine.dropFirst(2))
+                views.append(AnyView(
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("•")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                        formattedText(bulletText)
+                    }
+                    .padding(.leading, 4)
+                ))
+            }
+            // Numbered lists
+            else if let _ = trimmedLine.range(of: #"^\d+\.\s"#, options: .regularExpression) {
+                if !currentParagraph.isEmpty {
+                    views.append(AnyView(paragraphView(currentParagraph)))
+                    currentParagraph = ""
+                }
+                let parts = trimmedLine.split(separator: " ", maxSplits: 1)
+                if parts.count == 2 {
+                    let number = String(parts[0])
+                    let content = String(parts[1])
+                    views.append(AnyView(
+                        HStack(alignment: .top, spacing: 4) {
+                            Text(number)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .frame(width: 20, alignment: .trailing)
+                            formattedText(content)
+                        }
+                    ))
+                }
+            }
+            // Empty line = paragraph break
+            else if trimmedLine.isEmpty {
+                if !currentParagraph.isEmpty {
+                    views.append(AnyView(paragraphView(currentParagraph)))
+                    currentParagraph = ""
+                }
+            }
+            // Regular text
+            else {
+                if !currentParagraph.isEmpty {
+                    currentParagraph += " "
+                }
+                currentParagraph += trimmedLine
+            }
+        }
+
+        // Add remaining paragraph
+        if !currentParagraph.isEmpty {
+            views.append(AnyView(paragraphView(currentParagraph)))
+        }
+
+        return views
+    }
+
+    // Parse standalone image line: ![alt text](url)
+    func parseImageLine(_ line: String) -> AnyView? {
+        let imagePattern = #"^!\[([^\]]*)\]\(([^)]+)\)$"#
+        guard let regex = try? NSRegularExpression(pattern: imagePattern, options: []) else {
+            return nil
+        }
+
+        let nsRange = NSRange(line.startIndex..., in: line)
+        guard let match = regex.firstMatch(in: line, options: [], range: nsRange) else {
+            return nil
+        }
+
+        guard let altRange = Range(match.range(at: 1), in: line),
+              let urlRange = Range(match.range(at: 2), in: line) else {
+            return nil
+        }
+
+        let altText = String(line[altRange])
+        let urlString = String(line[urlRange])
+
+        guard let url = URL(string: urlString) else {
+            return nil
+        }
+
+        return AnyView(
+            MarkdownImageView(url: url, altText: altText)
+        )
+    }
+
+    func paragraphView(_ text: String) -> some View {
+        formattedText(text)
+    }
+
+    func formattedText(_ text: String) -> some View {
+        // First, extract and remove inline images to process separately
+        let (cleanedText, inlineImages) = extractInlineImages(text)
+
+        // Parse inline markdown (bold, links, etc)
+        var attributedString = AttributedString(cleanedText)
+
+        // Process bold **text**
+        let boldPattern = #"\*\*([^*]+)\*\*"#
+        if let regex = try? NSRegularExpression(pattern: boldPattern, options: []) {
+            let nsRange = NSRange(cleanedText.startIndex..., in: cleanedText)
+            let matches = regex.matches(in: cleanedText, options: [], range: nsRange)
+
+            for match in matches.reversed() {
+                if let range = Range(match.range, in: cleanedText),
+                   let contentRange = Range(match.range(at: 1), in: cleanedText) {
+                    let content = String(cleanedText[contentRange])
+                    if let attrRange = attributedString.range(of: String(cleanedText[range])) {
+                        attributedString.replaceSubrange(attrRange, with: AttributedString(content, attributes: AttributeContainer([.font: NSFont.boldSystemFont(ofSize: 14)])))
+                    }
+                }
+            }
+        }
+
+        // Process links [text](url)
+        let linkPattern = #"\[([^\]]+)\]\(([^)]+)\)"#
+        if let regex = try? NSRegularExpression(pattern: linkPattern, options: []) {
+            let currentText = String(attributedString.characters)
+            let nsRange = NSRange(currentText.startIndex..., in: currentText)
+            let matches = regex.matches(in: currentText, options: [], range: nsRange)
+
+            for match in matches.reversed() {
+                if let fullRange = Range(match.range, in: currentText),
+                   let textRange = Range(match.range(at: 1), in: currentText),
+                   let urlRange = Range(match.range(at: 2), in: currentText) {
+                    let linkText = String(currentText[textRange])
+                    let urlString = String(currentText[urlRange])
+
+                    if let url = URL(string: urlString),
+                       let attrRange = attributedString.range(of: String(currentText[fullRange])) {
+                        var linkAttr = AttributedString(linkText)
+                        linkAttr.link = url
+                        linkAttr.foregroundColor = .accentColor
+                        linkAttr.underlineStyle = .single
+                        attributedString.replaceSubrange(attrRange, with: linkAttr)
+                    }
+                }
+            }
+        }
+
+        // If there are inline images, return a VStack with text and images
+        if !inlineImages.isEmpty {
+            return AnyView(
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(attributedString)
+                        .font(.system(size: 14))
+                        .lineSpacing(4)
+                        .textSelection(.enabled)
+
+                    ForEach(inlineImages, id: \.url) { imageInfo in
+                        MarkdownImageView(url: imageInfo.url, altText: imageInfo.alt)
+                    }
+                }
+            )
+        }
+
+        return AnyView(
+            Text(attributedString)
+                .font(.system(size: 14))
+                .lineSpacing(4)
+                .textSelection(.enabled)
+        )
+    }
+
+    // Extract inline images from text and return cleaned text + image info
+    func extractInlineImages(_ text: String) -> (String, [(url: URL, alt: String)]) {
+        let imagePattern = #"!\[([^\]]*)\]\(([^)]+)\)"#
+        guard let regex = try? NSRegularExpression(pattern: imagePattern, options: []) else {
+            return (text, [])
+        }
+
+        var cleanedText = text
+        var images: [(url: URL, alt: String)] = []
+
+        let nsRange = NSRange(text.startIndex..., in: text)
+        let matches = regex.matches(in: text, options: [], range: nsRange)
+
+        for match in matches.reversed() {
+            if let fullRange = Range(match.range, in: text),
+               let altRange = Range(match.range(at: 1), in: text),
+               let urlRange = Range(match.range(at: 2), in: text) {
+                let altText = String(text[altRange])
+                let urlString = String(text[urlRange])
+
+                if let url = URL(string: urlString) {
+                    images.insert((url: url, alt: altText), at: 0)
+                }
+
+                // Remove the image markdown from text
+                if let cleanRange = Range(match.range, in: cleanedText) {
+                    cleanedText.replaceSubrange(cleanRange, with: "")
+                }
+            }
+        }
+
+        return (cleanedText.trimmingCharacters(in: .whitespaces), images)
+    }
+}
+
+// MARK: - Markdown Image View
+
+struct MarkdownImageView: View {
+    let url: URL
+    let altText: String
+
+    var body: some View {
+        AsyncImage(url: url) { phase in
+            switch phase {
+            case .empty:
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text("Loading image...")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .frame(height: 100)
+                .frame(maxWidth: .infinity)
+                .background(Color.gray.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            case .success(let image):
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
+
+            case .failure:
+                HStack(spacing: 8) {
+                    Image(systemName: "photo")
+                        .foregroundColor(.secondary)
+                    Text(altText.isEmpty ? "Image failed to load" : altText)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .frame(height: 60)
+                .frame(maxWidth: .infinity)
+                .background(Color.gray.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            @unknown default:
+                EmptyView()
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
