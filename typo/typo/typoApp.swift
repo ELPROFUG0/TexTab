@@ -266,12 +266,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func openSettings() {
         // Crear nueva ventana siempre para evitar problemas de memoria
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 600, height: 450),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 540),
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        window.title = "Typo Settings"
+        window.title = ""
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
         window.contentView = NSHostingView(rootView: SettingsView())
         window.center()
         window.isReleasedWhenClosed = false

@@ -32,29 +32,53 @@ struct SettingsView: View {
     @State private var selectedAction: Action?
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // General Tab
-            GeneralSettingsView()
-                .tabItem {
-                    Label("General", systemImage: "gear")
+        VStack(spacing: 0) {
+            // Custom Tab Bar - solo textos con Nunito
+            HStack(spacing: 24) {
+                TabTextButton(title: "General", isSelected: selectedTab == 0) {
+                    selectedTab = 0
                 }
-                .tag(0)
+                TabTextButton(title: "Actions", isSelected: selectedTab == 1) {
+                    selectedTab = 1
+                }
+                TabTextButton(title: "About", isSelected: selectedTab == 2) {
+                    selectedTab = 2
+                }
+            }
+            .padding(.vertical, 12)
 
-            // Actions Tab
-            ActionsSettingsView(selectedAction: $selectedAction)
-                .tabItem {
-                    Label("Actions", systemImage: "list.bullet")
-                }
-                .tag(1)
+            Divider()
 
-            // About Tab
-            AboutView()
-                .tabItem {
-                    Label("About", systemImage: "info.circle")
-                }
-                .tag(2)
+            // Tab Content
+            switch selectedTab {
+            case 0:
+                GeneralSettingsView()
+            case 1:
+                ActionsSettingsView(selectedAction: $selectedAction)
+            case 2:
+                AboutView()
+            default:
+                EmptyView()
+            }
         }
-        .frame(width: 700, height: 500)
+        .frame(width: 700, height: 540)
+    }
+}
+
+// MARK: - Custom Tab Text Button
+
+struct TabTextButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.nunitoBold(size: 14))
+                .foregroundColor(isSelected ? Color(red: 0.0, green: 0.584, blue: 1.0) : .secondary)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -171,18 +195,18 @@ struct ActionsSettingsView: View {
                 }
                 .scrollIndicators(.hidden)
 
-                Divider()
-
-                // New Action button
+                // New Action button - Fixed at bottom
                 HStack(spacing: 6) {
                     Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 16, weight: .black))
                     Text("New Action")
-                        .font(.nunitoBold(size: 13))
+                        .font(.nunitoRegularBold(size: 14))
+
+                    Spacer()
                 }
-                .foregroundColor(.accentColor)
-                .padding(.vertical, 10)
-                .padding(.horizontal, 16)
+                .foregroundColor(Color(red: 0.0, green: 0.584, blue: 1.0))
+                .padding(.vertical, 12)
+                .padding(.horizontal, 18)
                 .onTapGesture {
                     addNewAction()
                 }
@@ -311,7 +335,7 @@ struct ActionListRow: View {
 
             // Name
             Text(action.name.isEmpty ? "New Action" : action.name)
-                .font(.nunitoBold(size: 13))
+                .font(.nunitoRegularBold(size: 14))
                 .foregroundColor(textGrayColor)
                 .lineLimit(1)
 
@@ -338,9 +362,10 @@ struct ActionEditorView: View {
     @State private var isRecordingShortcut = false
     @State private var isImprovingPrompt = false
     @State private var recordedKeys: [String] = []
-    @State private var isSaved = false
+    @State private var hasUnsavedChanges = false
     @State private var showIconPicker = false
     @State private var isNameFocused = false
+    @State private var showDeleteConfirmation = false
 
     // Input background color: #f1f1ef for light mode, controlBackgroundColor for dark mode
     var inputBackgroundColor: Color {
@@ -386,8 +411,7 @@ struct ActionEditorView: View {
                                 .foregroundColor(textGrayColor)
                                 .scaleEffect(isNameFocused ? 1.05 : 1.0, anchor: .leading)
                                 .onChange(of: action.name) { _, _ in
-                                    onSave(action)
-                                    showSaved()
+                                    hasUnsavedChanges = true
                                 }
 
                             Spacer()
@@ -442,22 +466,22 @@ struct ActionEditorView: View {
                         ZStack(alignment: .topLeading) {
                             if action.prompt.isEmpty {
                                 Text("Enter your prompt here")
-                                    .font(.system(size: 14))
+                                    .font(.nunitoRegularBold(size: 14))
                                     .foregroundColor(textGrayColor.opacity(0.6))
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 12)
                             }
 
                             TextEditor(text: $action.prompt)
-                                .font(.system(size: 14))
+                                .font(.nunitoRegularBold(size: 14))
+                                .foregroundColor(textGrayColor)
                                 .scrollContentBackground(.hidden)
                                 .scrollDisabled(true)
                                 .background(Color.clear)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
                                 .onChange(of: action.prompt) { _, _ in
-                                    onSave(action)
-                                    showSaved()
+                                    hasUnsavedChanges = true
                                 }
                         }
                         .frame(minHeight: 220)
@@ -468,13 +492,17 @@ struct ActionEditorView: View {
                                 improvePromptWithAI()
                             }) {
                                 HStack(spacing: 5) {
-                                    if isImprovingPrompt {
-                                        ProgressView()
-                                            .scaleEffect(0.6)
-                                    } else {
-                                        Image(systemName: "sparkles")
-                                            .font(.system(size: 11))
+                                    ZStack {
+                                        if isImprovingPrompt {
+                                            ProgressView()
+                                                .scaleEffect(0.6)
+                                        } else {
+                                            Image(systemName: "sparkles")
+                                                .font(.system(size: 11))
+                                        }
                                     }
+                                    .frame(width: 14, height: 14)
+
                                     Text("Enhance")
                                         .font(.system(size: 12, weight: .medium))
                                 }
@@ -510,25 +538,49 @@ struct ActionEditorView: View {
 
                 // Footer with Delete and Saved buttons
                 HStack {
-                    Button(action: onDelete) {
-                        Text("Delete")
-                            .font(.system(size: 14, weight: .medium))
+                    Button(action: {
+                        if showDeleteConfirmation {
+                            onDelete()
+                        } else {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showDeleteConfirmation = true
+                            }
+                            // Reset after 3 seconds if not confirmed
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    showDeleteConfirmation = false
+                                }
+                            }
+                        }
+                    }) {
+                        Text(showDeleteConfirmation ? "Are you sure?" : "Delete")
+                            .font(.nunitoRegularBold(size: 15))
                             .foregroundColor(.red)
+                            .padding(.horizontal, showDeleteConfirmation ? 16 : 0)
+                            .padding(.vertical, showDeleteConfirmation ? 8 : 0)
+                            .background(
+                                Capsule()
+                                    .fill(showDeleteConfirmation ? Color.red.opacity(0.15) : Color.clear)
+                            )
                     }
                     .buttonStyle(.plain)
 
                     Spacer()
 
-                    // Saved button
-                    Text(isSaved ? "Saved" : "Saved")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(red: 0.0, green: 0.584, blue: 1.0))
-                        )
+                    // Save button
+                    Button(action: saveChanges) {
+                        Text(hasUnsavedChanges ? "Save" : "Saved")
+                            .font(.nunitoRegularBold(size: 15))
+                            .foregroundColor(Color(red: 0.0, green: 0.584, blue: 1.0))
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(Color(red: 0.0, green: 0.584, blue: 1.0).opacity(0.2))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!hasUnsavedChanges)
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 16)
@@ -550,8 +602,7 @@ struct ActionEditorView: View {
                     onSelect: { icon in
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             action.icon = icon
-                            onSave(action)
-                            showSaved()
+                            hasUnsavedChanges = true
                             showIconPicker = false
                         }
                     }
@@ -582,8 +633,7 @@ struct ActionEditorView: View {
                         self.recordedKeys = ["⌘", "⇧", key]
                     }
                     self.action.shortcut = key
-                    self.onSave(self.action)
-                    self.showSaved()
+                    self.hasUnsavedChanges = true
 
                     // Close tooltip after a delay
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -598,14 +648,10 @@ struct ActionEditorView: View {
         }
     }
 
-    func showSaved() {
+    func saveChanges() {
+        onSave(action)
         withAnimation {
-            isSaved = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation {
-                isSaved = false
-            }
+            hasUnsavedChanges = false
         }
     }
 
@@ -617,8 +663,7 @@ struct ActionEditorView: View {
                 let improvedPrompt = try await PromptImprover.improve(prompt: action.prompt)
                 await MainActor.run {
                     action.prompt = improvedPrompt
-                    onSave(action)
-                    showSaved()
+                    hasUnsavedChanges = true
                     isImprovingPrompt = false
                 }
             } catch {
