@@ -14,6 +14,7 @@ struct PopoverView: View {
     @State private var isProcessing = false
     @State private var resultText: String?
     @State private var activeAction: Action?
+    @State private var shouldScrollToSelection = false
 
     var onClose: () -> Void
     var onOpenSettings: () -> Void
@@ -118,8 +119,11 @@ struct PopoverView: View {
                 }
                 .frame(maxHeight: 300)
                 .onChange(of: selectedIndex) { _, newValue in
-                    withAnimation(.easeOut(duration: 0.1)) {
-                        proxy.scrollTo(newValue, anchor: .center)
+                    if shouldScrollToSelection {
+                        withAnimation(.easeOut(duration: 0.1)) {
+                            proxy.scrollTo(newValue, anchor: .center)
+                        }
+                        shouldScrollToSelection = false
                     }
                 }
             }
@@ -156,10 +160,12 @@ struct PopoverView: View {
             .background(Color(NSColor.controlBackgroundColor))
         }
         .onKeyPress(.upArrow) {
+            shouldScrollToSelection = true
             selectedIndex = max(0, selectedIndex - 1)
             return .handled
         }
         .onKeyPress(.downArrow) {
+            shouldScrollToSelection = true
             selectedIndex = min(filteredActions.count, selectedIndex + 1)
             return .handled
         }

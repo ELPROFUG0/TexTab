@@ -178,6 +178,7 @@ struct ActionsSettingsView: View {
                     store.updateAction(updatedAction)
                     selectedAction = updatedAction
                 }
+                .id(action.id) // Forzar recreación cuando cambia la acción
             } else {
                 VStack {
                     Text("Select an action to edit")
@@ -195,9 +196,9 @@ struct ActionsSettingsView: View {
 
     func addNewAction() {
         let newAction = Action(
-            name: "New Action",
+            name: "",
             icon: "star",
-            prompt: "Enter your prompt here...",
+            prompt: "",
             shortcut: ""
         )
         store.addAction(newAction)
@@ -219,6 +220,7 @@ struct ActionEditorView: View {
     var onSave: (Action) -> Void
 
     @State private var isRecordingShortcut = false
+    @State private var isImprovingPrompt = false
 
     let iconOptions = [
         "pencil", "arrow.triangle.2.circlepath", "arrow.down.left.and.arrow.up.right",
@@ -283,8 +285,29 @@ struct ActionEditorView: View {
 
                 // Prompt
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Prompt")
-                        .font(.headline)
+                    HStack {
+                        Text("Prompt")
+                            .font(.headline)
+
+                        Spacer()
+
+                        Button(action: {
+                            improvePromptWithAI()
+                        }) {
+                            HStack(spacing: 4) {
+                                if isImprovingPrompt {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                } else {
+                                    Image(systemName: "wand.and.stars")
+                                }
+                                Text("Improve with AI")
+                            }
+                            .font(.system(size: 12))
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(action.prompt.isEmpty || isImprovingPrompt)
+                    }
 
                     TextEditor(text: $action.prompt)
                         .font(.body)
@@ -309,6 +332,86 @@ struct ActionEditorView: View {
             }
             .padding(24)
         }
+    }
+
+    func improvePromptWithAI() {
+        isImprovingPrompt = true
+
+        Task {
+            do {
+                let improvedPrompt = try await PromptImprover.improve(prompt: action.prompt)
+                await MainActor.run {
+                    action.prompt = improvedPrompt
+                    onSave(action)
+                    isImprovingPrompt = false
+                }
+            } catch {
+                await MainActor.run {
+                    isImprovingPrompt = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Prompt Improver
+
+class PromptImprover {
+    static func improve(prompt: String) async throws -> String {
+        let apiKey = "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"
+        let url = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+        let systemPrompt = """
+        You are an expert at writing prompts for text transformation apps.
+
+        The user gives you a basic idea, and you expand it into a detailed prompt that will guide an AI to transform text.
+
+        RULES:
+        - Write clear instructions describing the desired style, tone, and characteristics
+        - Include specific techniques and qualities the text should have
+        - Do NOT include phrases like "Return only the text" or "without explanations" at the end
+        - Do NOT start with "Rewrite" or "Transform"
+        - Keep it in the same language as the user's input
+
+        EXAMPLES:
+        Input: "formal"
+        Output: "Use professional and formal language. Employ sophisticated vocabulary, proper grammar, and a respectful tone suitable for business communication. Avoid contractions and colloquialisms."
+
+        Input: "funny"
+        Output: "Add humor and wit to the text. Use playful language, clever wordplay, and a light-hearted tone. Include amusing observations while keeping the core message intact."
+
+        Input: "hazlo romántico"
+        Output: "Utiliza un lenguaje poético y evocador para expresar emociones profundas. Incluye metáforas, descripciones sensoriales y un tono apasionado pero sincero que resalte la belleza y la conexión."
+
+        Return ONLY the improved prompt, nothing else.
+        """
+
+        let body: [String: Any] = [
+            "model": "openai/gpt-4o-mini",
+            "messages": [
+                ["role": "system", "content": systemPrompt],
+                ["role": "user", "content": "Improve this prompt: \(prompt)"]
+            ]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let choices = json["choices"] as? [[String: Any]],
+           let firstChoice = choices.first,
+           let message = firstChoice["message"] as? [String: Any],
+           let content = message["content"] as? String {
+            return content.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        throw NSError(domain: "PromptImprover", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse response"])
     }
 }
 
