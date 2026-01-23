@@ -316,6 +316,8 @@ struct ActionEditorView: View {
 
     @State private var isRecordingShortcut = false
     @State private var isImprovingPrompt = false
+    @State private var recordedKeys: [String] = []
+    @State private var isSaved = false
 
     let iconOptions = [
         "pencil", "arrow.triangle.2.circlepath", "arrow.down.left.and.arrow.up.right",
@@ -324,120 +326,219 @@ struct ActionEditorView: View {
     ]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Header with icon and name
-                HStack(spacing: 16) {
-                    Menu {
-                        ForEach(iconOptions, id: \.self) { icon in
-                            Button(action: {
-                                action.icon = icon
-                                onSave(action)
-                            }) {
-                                Label(icon, systemImage: icon)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header with icon and name
+                    HStack(spacing: 12) {
+                        Menu {
+                            ForEach(iconOptions, id: \.self) { icon in
+                                Button(action: {
+                                    action.icon = icon
+                                    onSave(action)
+                                    showSaved()
+                                }) {
+                                    Label(icon, systemImage: icon)
+                                }
                             }
+                        } label: {
+                            Image(systemName: action.icon)
+                                .font(.system(size: 20))
+                                .foregroundColor(.secondary)
+                                .frame(width: 36, height: 36)
                         }
-                    } label: {
-                        Image(systemName: action.icon)
-                            .font(.system(size: 24))
-                            .foregroundColor(.accentColor)
-                            .frame(width: 44, height: 44)
-                            .background(Color.accentColor.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                    .menuStyle(.borderlessButton)
+                        .menuStyle(.borderlessButton)
 
-                    TextField("Action Name", text: $action.name)
-                        .textFieldStyle(.plain)
-                        .font(.title2.bold())
-                        .onChange(of: action.name) { _, _ in
-                            onSave(action)
-                        }
-
-                    Spacer()
-
-                    // Delete button
-                    Button(action: onDelete) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 14))
-                            .foregroundColor(.red)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Delete Action")
-                }
-
-                Divider()
-
-                // Shortcut
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Keyboard Shortcut")
-                        .font(.headline)
-
-                    HStack(spacing: 8) {
-                        // Command key - 3D style
-                        Keyboard3DKey(text: "⌘")
-
-                        Text("+")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 14, weight: .medium))
-
-                        // Editable key - 3D style
-                        Keyboard3DKeyEditable(text: $action.shortcut, onSave: {
-                            onSave(action)
-                        })
+                        TextField("New Action", text: $action.name)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 22, weight: .bold))
+                            .onChange(of: action.name) { _, _ in
+                                onSave(action)
+                                showSaved()
+                            }
 
                         Spacer()
                     }
-                }
 
-                // Prompt
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Prompt")
-                            .font(.headline)
-
-                        Spacer()
+                    // Shortcut field with tooltip
+                    VStack(spacing: 0) {
+                        // Tooltip appears above
+                        if isRecordingShortcut {
+                            ShortcutTooltip(recordedKeys: recordedKeys)
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity),
+                                    removal: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity)
+                                ))
+                                .padding(.bottom, 8)
+                        }
 
                         Button(action: {
-                            improvePromptWithAI()
+                            startRecordingShortcut()
                         }) {
-                            HStack(spacing: 4) {
-                                if isImprovingPrompt {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
+                            HStack {
+                                if action.shortcut.isEmpty {
+                                    Text("Click to record shortcut...")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(Color.gray.opacity(0.5))
                                 } else {
-                                    Image(systemName: "wand.and.stars")
+                                    HStack(spacing: 6) {
+                                        ShortcutInputKey(text: "⌘")
+                                        ShortcutInputKey(text: "⇧")
+                                        ShortcutInputKey(text: action.shortcut)
+                                    }
                                 }
-                                Text("Improve with AI")
+                                Spacer()
                             }
-                            .font(.system(size: 12))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(isRecordingShortcut ? Color.accentColor : Color.gray.opacity(0.2), lineWidth: isRecordingShortcut ? 2 : 1)
+                            )
                         }
-                        .buttonStyle(.bordered)
-                        .disabled(action.prompt.isEmpty || isImprovingPrompt)
+                        .buttonStyle(.plain)
                     }
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isRecordingShortcut)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: recordedKeys)
 
-                    TextEditor(text: $action.prompt)
-                        .font(.body)
-                        .frame(minHeight: 150)
-                        .padding(8)
+                    // Prompt editor
+                    ZStack(alignment: .topLeading) {
+                        if action.prompt.isEmpty {
+                            Text("Enter your prompt here")
+                                .font(.system(size: 14))
+                                .foregroundColor(Color.gray.opacity(0.5))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                        }
+
+                        TextEditor(text: $action.prompt)
+                            .font(.system(size: 14))
+                            .scrollContentBackground(.hidden)
+                            .background(Color.clear)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .onChange(of: action.prompt) { _, _ in
+                                onSave(action)
+                                showSaved()
+                            }
+                    }
+                    .frame(minHeight: 150)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
+
+                    // Enhance button
+                    Button(action: {
+                        improvePromptWithAI()
+                    }) {
+                        HStack(spacing: 6) {
+                            if isImprovingPrompt {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                            } else {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 12))
+                            }
+                            Text("Enhance")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
                         .background(Color(NSColor.controlBackgroundColor))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                         )
-                        .onChange(of: action.prompt) { _, _ in
-                            onSave(action)
-                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(action.prompt.isEmpty || isImprovingPrompt)
 
-                    Text("This prompt will be sent to the AI along with the selected text.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Spacer()
                 }
+                .padding(24)
+            }
+
+            Divider()
+
+            // Footer with Delete and Saved buttons
+            HStack {
+                Button(action: onDelete) {
+                    Text("Delete")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
 
                 Spacer()
+
+                // Saved button
+                Text(isSaved ? "Saved" : "Saved")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(red: 0.0, green: 0.584, blue: 1.0))
+                    )
             }
-            .padding(24)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+            .background(Color(NSColor.windowBackgroundColor))
+        }
+        .onAppear {
+            // Initialize recorded keys from existing shortcut
+            if !action.shortcut.isEmpty {
+                recordedKeys = ["⌘", "⇧", action.shortcut]
+            }
+        }
+    }
+
+    func startRecordingShortcut() {
+        isRecordingShortcut = true
+        recordedKeys = ["⌘", "⇧"]
+
+        // Monitor for key press
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if self.isRecordingShortcut {
+                let key = event.charactersIgnoringModifiers?.uppercased() ?? ""
+                if !key.isEmpty && key.count == 1 {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        self.recordedKeys = ["⌘", "⇧", key]
+                    }
+                    self.action.shortcut = key
+                    self.onSave(self.action)
+                    self.showSaved()
+
+                    // Close tooltip after a delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation {
+                            self.isRecordingShortcut = false
+                        }
+                    }
+                    return nil
+                }
+            }
+            return event
+        }
+    }
+
+    func showSaved() {
+        withAnimation {
+            isSaved = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation {
+                isSaved = false
+            }
         }
     }
 
@@ -450,6 +551,7 @@ struct ActionEditorView: View {
                 await MainActor.run {
                     action.prompt = improvedPrompt
                     onSave(action)
+                    showSaved()
                     isImprovingPrompt = false
                 }
             } catch {
@@ -458,6 +560,132 @@ struct ActionEditorView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Shortcut Tooltip
+
+struct ShortcutTooltip: View {
+    let recordedKeys: [String]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Tooltip content
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("e.g.")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+
+                    // Always show 3 key slots
+                    ForEach(0..<3, id: \.self) { index in
+                        if index < recordedKeys.count {
+                            TooltipKey(text: recordedKeys[index])
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.5).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
+                                .id("key-\(index)-\(recordedKeys[index])")
+                        } else {
+                            TooltipKey(text: "")
+                                .opacity(0.4)
+                        }
+                    }
+                }
+
+                Text("Recording...")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(NSColor.windowBackgroundColor))
+                    .shadow(color: .black.opacity(0.12), radius: 12, x: 0, y: 4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+            )
+
+            // Arrow pointing down
+            TooltipArrow()
+                .fill(Color(NSColor.windowBackgroundColor))
+                .frame(width: 16, height: 10)
+                .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 2)
+        }
+    }
+}
+
+struct TooltipKey: View {
+    @Environment(\.colorScheme) var colorScheme
+    let text: String
+
+    var body: some View {
+        ZStack {
+            // Bottom layer (3D effect)
+            RoundedRectangle(cornerRadius: 6)
+                .fill(colorScheme == .dark ? Color(white: 0.25) : Color(white: 0.7))
+                .frame(width: 28, height: 28)
+                .offset(y: 2)
+
+            // Top layer
+            RoundedRectangle(cornerRadius: 6)
+                .fill(colorScheme == .dark ? Color.white : Color(white: 0.95))
+                .frame(width: 28, height: 28)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.gray.opacity(colorScheme == .dark ? 0 : 0.3), lineWidth: 1)
+                )
+
+            Text(text)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.black)
+        }
+        .frame(width: 28, height: 30)
+    }
+}
+
+struct TooltipArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - Shortcut Input Key (3D effect for input field)
+
+struct ShortcutInputKey: View {
+    @Environment(\.colorScheme) var colorScheme
+    let text: String
+
+    var body: some View {
+        ZStack {
+            // Bottom layer (3D effect)
+            RoundedRectangle(cornerRadius: 5)
+                .fill(colorScheme == .dark ? Color(white: 0.25) : Color(white: 0.7))
+                .frame(width: 24, height: 24)
+                .offset(y: 2)
+
+            // Top layer
+            RoundedRectangle(cornerRadius: 5)
+                .fill(colorScheme == .dark ? Color.white : Color(white: 0.95))
+                .frame(width: 24, height: 24)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(Color.gray.opacity(colorScheme == .dark ? 0 : 0.3), lineWidth: 1)
+                )
+
+            Text(text)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.black)
+        }
+        .frame(width: 24, height: 26)
     }
 }
 
