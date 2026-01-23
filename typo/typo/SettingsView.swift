@@ -42,7 +42,7 @@ struct SettingsView: View {
                 }
                 .tag(2)
         }
-        .frame(width: 600, height: 450)
+        .frame(width: 700, height: 500)
     }
 }
 
@@ -153,6 +153,7 @@ struct ActionsSettingsView: View {
                     .padding(.vertical, 8)
                     .padding(.horizontal, 8)
                 }
+                .scrollIndicators(.hidden)
 
                 Divider()
 
@@ -263,8 +264,19 @@ struct ActionsSettingsView: View {
 // MARK: - Action List Row
 
 struct ActionListRow: View {
+    @Environment(\.colorScheme) var colorScheme
     let action: Action
     let isSelected: Bool
+
+    // Selected background color: #f1f1ef for light mode, accentColor opacity for dark mode
+    var selectedBackgroundColor: Color {
+        if !isSelected {
+            return Color.clear
+        }
+        return colorScheme == .light
+            ? Color(red: 241/255, green: 241/255, blue: 239/255)
+            : Color.accentColor.opacity(0.1)
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -301,7 +313,7 @@ struct ActionListRow: View {
         .padding(.horizontal, 10)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+                .fill(selectedBackgroundColor)
         )
         .contentShape(Rectangle())
     }
@@ -310,6 +322,7 @@ struct ActionListRow: View {
 // MARK: - Action Editor
 
 struct ActionEditorView: View {
+    @Environment(\.colorScheme) var colorScheme
     @State var action: Action
     var onSave: (Action) -> Void
     var onDelete: () -> Void
@@ -325,9 +338,16 @@ struct ActionEditorView: View {
         "text.bubble", "checkmark.circle", "lightbulb", "brain"
     ]
 
+    // Input background color: #f1f1ef for light mode, controlBackgroundColor for dark mode
+    var inputBackgroundColor: Color {
+        colorScheme == .light
+            ? Color(red: 241/255, green: 241/255, blue: 239/255)
+            : Color(NSColor.controlBackgroundColor)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     // Header with icon and name
                     HStack(spacing: 12) {
@@ -392,11 +412,11 @@ struct ActionEditorView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 10)
-                            .background(Color(NSColor.controlBackgroundColor))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .background(inputBackgroundColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(isRecordingShortcut ? Color.accentColor : Color.gray.opacity(0.2), lineWidth: isRecordingShortcut ? 2 : 1)
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.15), lineWidth: 1)
                             )
                         }
                         .buttonStyle(.plain)
@@ -404,69 +424,76 @@ struct ActionEditorView: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isRecordingShortcut)
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: recordedKeys)
 
-                    // Prompt editor
-                    ZStack(alignment: .topLeading) {
-                        if action.prompt.isEmpty {
-                            Text("Enter your prompt here")
+                    // Prompt editor with Enhance button inside
+                    VStack(spacing: 0) {
+                        ZStack(alignment: .topLeading) {
+                            if action.prompt.isEmpty {
+                                Text("Enter your prompt here")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(Color.gray.opacity(0.5))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                            }
+
+                            TextEditor(text: $action.prompt)
                                 .font(.system(size: 14))
-                                .foregroundColor(Color.gray.opacity(0.5))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
+                                .scrollContentBackground(.hidden)
+                                .scrollDisabled(true)
+                                .background(Color.clear)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .onChange(of: action.prompt) { _, _ in
+                                    onSave(action)
+                                    showSaved()
+                                }
                         }
+                        .frame(minHeight: 220)
 
-                        TextEditor(text: $action.prompt)
-                            .font(.system(size: 14))
-                            .scrollContentBackground(.hidden)
-                            .background(Color.clear)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .onChange(of: action.prompt) { _, _ in
-                                onSave(action)
-                                showSaved()
+                        // Enhance button inside container
+                        HStack {
+                            Button(action: {
+                                improvePromptWithAI()
+                            }) {
+                                HStack(spacing: 5) {
+                                    if isImprovingPrompt {
+                                        ProgressView()
+                                            .scaleEffect(0.6)
+                                    } else {
+                                        Image(systemName: "sparkles")
+                                            .font(.system(size: 11))
+                                    }
+                                    Text("Enhance")
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color(NSColor.windowBackgroundColor))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                                )
                             }
+                            .buttonStyle(.plain)
+                            .disabled(action.prompt.isEmpty || isImprovingPrompt)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 10)
                     }
-                    .frame(minHeight: 150)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .background(inputBackgroundColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.gray.opacity(0.15), lineWidth: 1)
                     )
-
-                    // Enhance button
-                    Button(action: {
-                        improvePromptWithAI()
-                    }) {
-                        HStack(spacing: 6) {
-                            if isImprovingPrompt {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                            } else {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 12))
-                            }
-                            Text("Enhance")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(action.prompt.isEmpty || isImprovingPrompt)
 
                     Spacer()
                 }
                 .padding(24)
             }
-
-            Divider()
 
             // Footer with Delete and Saved buttons
             HStack {
