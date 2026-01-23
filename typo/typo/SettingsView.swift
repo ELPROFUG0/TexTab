@@ -6,6 +6,18 @@
 import SwiftUI
 import AppKit
 
+// MARK: - Custom Font Extension
+
+extension Font {
+    static func nunitoBold(size: CGFloat) -> Font {
+        return .custom("Nunito ExtraBold", size: size)
+    }
+
+    static func nunitoRegularBold(size: CGFloat) -> Font {
+        return .custom("Nunito Bold", size: size)
+    }
+}
+
 // MARK: - Helper Function
 
 func openAccessibilitySettings() {
@@ -162,7 +174,7 @@ struct ActionsSettingsView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .semibold))
                     Text("New Action")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.nunitoBold(size: 13))
                 }
                 .foregroundColor(.accentColor)
                 .padding(.vertical, 10)
@@ -201,7 +213,7 @@ struct ActionsSettingsView: View {
 
                         VStack(spacing: 10) {
                             Text("No Action Selected")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.nunitoBold(size: 20))
                                 .foregroundColor(.primary)
 
                             Text("Start by creating a new action or select an\nexisting one from the list.")
@@ -216,7 +228,7 @@ struct ActionsSettingsView: View {
                             addNewAction()
                         }) {
                             Text("New Action")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.nunitoBold(size: 15))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 40)
                                 .padding(.vertical, 12)
@@ -303,7 +315,7 @@ struct ActionListRow: View {
 
             // Name
             Text(action.name.isEmpty ? "New Action" : action.name)
-                .font(.system(size: 13))
+                .font(.nunitoBold(size: 13))
                 .foregroundColor(action.name.isEmpty ? .secondary : .primary)
                 .lineLimit(1)
 
@@ -371,7 +383,7 @@ struct ActionEditorView: View {
 
                         TextField("New Action", text: $action.name)
                             .textFieldStyle(.plain)
-                            .font(.system(size: 22, weight: .bold))
+                            .font(.nunitoBold(size: 22))
                             .onChange(of: action.name) { _, _ in
                                 onSave(action)
                                 showSaved()
@@ -787,7 +799,7 @@ struct AboutView: View {
                 .foregroundColor(.accentColor)
 
             Text("Typo")
-                .font(.largeTitle.bold())
+                .font(.nunitoBold(size: 34))
 
             Text("Version 1.0.0")
                 .foregroundColor(.secondary)

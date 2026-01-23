@@ -9,6 +9,7 @@ import SwiftUI
 import AppKit
 import Carbon.HIToolbox
 import Combine
+import CoreText
 
 @main
 struct typoApp: App {
@@ -40,12 +41,50 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         globalAppDelegate = self
+        registerCustomFonts()
         setupMenuBar()
         setupGlobalHotkey()
         setupLocalEscapeMonitor()
 
         // Ocultar del dock (solo menu bar)
         NSApp.setActivationPolicy(.accessory)
+    }
+
+    func registerCustomFonts() {
+        // Debug: Print bundle path
+        print("Bundle path: \(Bundle.main.bundlePath)")
+
+        // Try to find the font in different locations
+        // Register both Nunito Bold and ExtraBold
+        let fontFiles = ["Nunito-Bold", "Nunito-ExtraBold"]
+
+        for fontFile in fontFiles {
+            let possiblePaths = [
+                Bundle.main.url(forResource: fontFile, withExtension: "ttf", subdirectory: "Fonts"),
+                Bundle.main.url(forResource: fontFile, withExtension: "ttf"),
+                Bundle.main.resourceURL?.appendingPathComponent("Fonts/\(fontFile).ttf")
+            ]
+
+            for path in possiblePaths {
+                if let fontURL = path {
+                    print("Trying font at: \(fontURL.path)")
+                    if FileManager.default.fileExists(atPath: fontURL.path) {
+                        var error: Unmanaged<CFError>?
+                        let success = CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, &error)
+                        print("Font registration success for \(fontFile): \(success)")
+                        if let error = error?.takeRetainedValue() {
+                            print("Font registration error: \(error)")
+                        }
+                        break
+                    }
+                }
+            }
+        }
+
+        // List all available fonts to debug
+        let fontFamilies = NSFontManager.shared.availableFontFamilies
+        let nunitoFonts = fontFamilies.filter { $0.lowercased().contains("nunito") }
+        print("Available Nunito fonts: \(nunitoFonts)")
     }
 
     func setupLocalEscapeMonitor() {

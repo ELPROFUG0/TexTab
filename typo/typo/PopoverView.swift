@@ -96,7 +96,8 @@ struct PopoverView: View {
                                 .foregroundColor(.accentColor)
 
                             Text("New Action")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.nunitoRegularBold(size: 14))
+                                .foregroundColor(Color.gray)
 
                             Spacer()
 
@@ -186,7 +187,7 @@ struct PopoverView: View {
             // Header
             HStack {
                 Text(action.name)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.nunitoRegularBold(size: 13))
                     .foregroundColor(.accentColor)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -330,7 +331,8 @@ struct ActionRow: View {
                 .frame(width: 24)
 
             Text(action.name)
-                .font(.system(size: 14, weight: .medium))
+                .font(.nunitoRegularBold(size: 14))
+                .foregroundColor(Color.gray)
 
             Spacer()
 
