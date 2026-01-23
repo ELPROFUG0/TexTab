@@ -76,6 +76,7 @@ struct PopoverView: View {
                                 isSelected: index == selectedIndex
                             )
                             .id(index)
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 executeAction(action)
                             }
@@ -88,8 +89,14 @@ struct PopoverView: View {
 
                         // New Action button
                         NewActionRow(isSelected: filteredActions.count == selectedIndex)
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 onOpenSettings()
+                            }
+                            .onHover { hovering in
+                                if hovering {
+                                    selectedIndex = filteredActions.count
+                                }
                             }
                     }
                     .padding(8)
@@ -363,6 +370,7 @@ struct ActionRow: View {
             if !action.shortcut.isEmpty {
                 HStack(spacing: 4) {
                     KeyboardKey("⌘")
+                    KeyboardKey("⇧")
                     KeyboardKey(action.shortcut)
                 }
             }
@@ -405,6 +413,7 @@ struct NewActionRow: View {
 
             HStack(spacing: 4) {
                 KeyboardKey("⌘")
+                KeyboardKey("⇧")
                 KeyboardKey("N")
             }
         }
