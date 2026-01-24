@@ -862,9 +862,11 @@ struct ActionEditorView: View {
                                         RoundedRectangle(cornerRadius: 10)
                                             .stroke(Color.gray.opacity(0.15), lineWidth: 1)
                                     )
+                                    .opacity(ActionsStore.shared.apiKey.isEmpty ? 0.4 : 1)
                                 }
                                 .buttonStyle(.plain)
-                                .disabled(action.prompt.isEmpty || isImprovingPrompt)
+                                .disabled(action.prompt.isEmpty || isImprovingPrompt || ActionsStore.shared.apiKey.isEmpty)
+                                .help(ActionsStore.shared.apiKey.isEmpty ? "Connect an API key in the AI tab to use Enhance" : "Enhance prompt with AI")
 
                                 Spacer()
                             }
@@ -1005,11 +1007,23 @@ struct ActionEditorView: View {
     }
 
     func improvePromptWithAI() {
+        let store = ActionsStore.shared
+        guard !store.apiKey.isEmpty else { return }
+
         isImprovingPrompt = true
+
+        let provider = store.selectedProvider
+        let model = store.selectedModel
+        let apiKey = store.apiKey
 
         Task {
             do {
-                let improvedPrompt = try await PromptImprover.improve(prompt: action.prompt)
+                let improvedPrompt = try await PromptImprover.improve(
+                    prompt: action.prompt,
+                    provider: provider,
+                    model: model,
+                    apiKey: apiKey
+                )
                 await MainActor.run {
                     action.prompt = improvedPrompt
                     hasUnsavedChanges = true
@@ -1357,14 +1371,30 @@ struct ShortcutInputKey: View {
 // MARK: - Prompt Improver
 
 class PromptImprover {
-    static func improve(prompt: String) async throws -> String {
-        let apiKey = "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"
-        let url = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
+    enum PromptImproverError: Error {
+        case noApiKey
+        case invalidResponse
+        case networkError(Error)
+    }
+
+    static func improve(prompt: String, provider: AIProvider, model: AIModel, apiKey: String) async throws -> String {
+        guard !apiKey.isEmpty else {
+            throw PromptImproverError.noApiKey
+        }
+
+        let url = URL(string: provider.baseURL)!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+        // Set authorization header based on provider
+        if provider == .anthropic {
+            request.addValue(apiKey, forHTTPHeaderField: "x-api-key")
+            request.addValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        } else {
+            request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
 
         let systemPrompt = """
         You are an expert at writing prompts for text transformation apps.
@@ -1391,27 +1421,50 @@ class PromptImprover {
         Return ONLY the improved prompt, nothing else.
         """
 
-        let body: [String: Any] = [
-            "model": "openai/gpt-4o-mini",
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": "Improve this prompt: \(prompt)"]
+        let body: [String: Any]
+
+        if provider == .anthropic {
+            body = [
+                "model": model.id,
+                "max_tokens": 1024,
+                "system": systemPrompt,
+                "messages": [
+                    ["role": "user", "content": "Improve this prompt: \(prompt)"]
+                ]
             ]
-        ]
+        } else {
+            body = [
+                "model": model.id,
+                "messages": [
+                    ["role": "system", "content": systemPrompt],
+                    ["role": "user", "content": "Improve this prompt: \(prompt)"]
+                ]
+            ]
+        }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, _) = try await URLSession.shared.data(for: request)
 
-        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let choices = json["choices"] as? [[String: Any]],
-           let firstChoice = choices.first,
-           let message = firstChoice["message"] as? [String: Any],
-           let content = message["content"] as? String {
-            return content.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Parse response based on provider
+        if provider == .anthropic {
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let content = json["content"] as? [[String: Any]],
+               let firstContent = content.first,
+               let text = firstContent["text"] as? String {
+                return text.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        } else {
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let choices = json["choices"] as? [[String: Any]],
+               let firstChoice = choices.first,
+               let message = firstChoice["message"] as? [String: Any],
+               let content = message["content"] as? String {
+                return content.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
         }
 
-        throw NSError(domain: "PromptImprover", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse response"])
+        throw PromptImproverError.invalidResponse
     }
 }
 
