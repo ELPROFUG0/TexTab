@@ -52,15 +52,17 @@ class OnboardingManager: ObservableObject {
 
     func validateLicense(_ key: String) async -> Bool {
         // TODO: Implement actual license validation with your server
-        let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
 
-        // Example format: XXXX-XXXX-XXXX-XXXX
-        let pattern = "^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$"
+        // Validate 32 alphanumeric characters (UUID format without dashes)
+        let pattern = "^[A-Z0-9]{32}$"
         let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
         let range = NSRange(trimmedKey.startIndex..., in: trimmedKey)
 
         if regex?.firstMatch(in: trimmedKey, options: [], range: range) != nil {
-            licenseKey = trimmedKey.uppercased()
+            // Format with dashes for storage (8-4-4-4-12)
+            let formatted = "\(trimmedKey.prefix(8))-\(trimmedKey.dropFirst(8).prefix(4))-\(trimmedKey.dropFirst(12).prefix(4))-\(trimmedKey.dropFirst(16).prefix(4))-\(trimmedKey.dropFirst(20))"
+            licenseKey = formatted
             isLicenseValid = true
             return true
         }
@@ -111,7 +113,7 @@ struct OnboardingView: View {
                 EmptyView()
             }
         }
-        .frame(width: 900, height: 580)
+        .frame(width: 800, height: 520)
     }
 
     private func nextStep() {
@@ -145,7 +147,7 @@ struct OnboardingView: View {
                     onComplete()
                 } else {
                     showError = true
-                    errorMessage = "Invalid license key. Use format: XXXX-XXXX-XXXX-XXXX"
+                    errorMessage = "Invalid license key. Use format: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
                 }
             }
         }
@@ -175,13 +177,13 @@ struct WelcomeStep: View {
                 Spacer()
 
                 // Main title - bold, white, centered
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Text("Meet your")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
 
                     Text("new writing assistant")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                 }
 
@@ -190,15 +192,15 @@ struct WelcomeStep: View {
                 // Get Started button - glassmorphism style
                 Button(action: onNext) {
                     Text("Get Started")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 50)
-                        .padding(.vertical, 18)
+                        .padding(.horizontal, 40)
+                        .padding(.vertical, 14)
                         .background(
-                            RoundedRectangle(cornerRadius: 30)
+                            RoundedRectangle(cornerRadius: 25)
                                 .fill(Color.white.opacity(0.25))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 30)
+                                    RoundedRectangle(cornerRadius: 25)
                                         .stroke(Color.white.opacity(0.4), lineWidth: 1)
                                 )
                         )
@@ -207,7 +209,7 @@ struct WelcomeStep: View {
                 .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
 
                 Spacer()
-                    .frame(height: 80)
+                    .frame(height: 60)
             }
         }
     }
@@ -239,86 +241,86 @@ struct FeaturesStep: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 30) {
+            VStack(spacing: 20) {
                 Spacer()
-                    .frame(height: 20)
+                    .frame(height: 16)
 
                 Text("What Typo can do")
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
 
                 // Features grid
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     ForEach(features) { feature in
-                        HStack(spacing: 20) {
+                        HStack(spacing: 16) {
                             // Icon
                             ZStack {
                                 Circle()
                                     .fill(Color.white.opacity(0.2))
-                                    .frame(width: 56, height: 56)
+                                    .frame(width: 44, height: 44)
 
                                 Image(systemName: feature.icon)
-                                    .font(.system(size: 24))
+                                    .font(.system(size: 20))
                                     .foregroundColor(.white)
                             }
 
                             // Text
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text(feature.title)
-                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                                     .foregroundColor(.white)
 
                                 Text(feature.description)
-                                    .font(.system(size: 14, design: .rounded))
+                                    .font(.system(size: 13, design: .rounded))
                                     .foregroundColor(.white.opacity(0.85))
                             }
 
                             Spacer()
                         }
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 16)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
                         .background(
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: 14)
                                 .fill(Color.white.opacity(0.15))
                         )
                     }
                 }
-                .padding(.horizontal, 80)
+                .padding(.horizontal, 60)
 
                 Spacer()
 
                 // Navigation
-                HStack(spacing: 16) {
+                HStack(spacing: 14) {
                     Button(action: onBack) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             Image(systemName: "arrow.left")
                             Text("Back")
                         }
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 14)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
                         .background(
-                            RoundedRectangle(cornerRadius: 25)
+                            RoundedRectangle(cornerRadius: 22)
                                 .fill(Color.white.opacity(0.2))
                         )
                     }
                     .buttonStyle(.plain)
 
                     Button(action: onNext) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             Text("Continue")
                             Image(systemName: "arrow.right")
                         }
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 14)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
                         .background(
-                            RoundedRectangle(cornerRadius: 25)
+                            RoundedRectangle(cornerRadius: 22)
                                 .fill(Color.white.opacity(0.25))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 25)
+                                    RoundedRectangle(cornerRadius: 22)
                                         .stroke(Color.white.opacity(0.4), lineWidth: 1)
                                 )
                         )
@@ -327,7 +329,7 @@ struct FeaturesStep: View {
                 }
 
                 Spacer()
-                    .frame(height: 40)
+                    .frame(height: 30)
             }
         }
     }
@@ -366,37 +368,37 @@ struct PermissionsStep: View {
 
                 VStack(alignment: .leading, spacing: 0) {
                     Spacer()
-                        .frame(height: 50)
+                        .frame(height: 40)
 
                     Text("Accessibility")
-                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(Color(hex: "1a1a1a"))
 
                     Spacer()
-                        .frame(height: 12)
+                        .frame(height: 10)
 
                     Text("Accessibility permissions are required\nfor Typo to function.")
-                        .font(.system(size: 15))
+                        .font(.system(size: 14))
                         .foregroundColor(Color(hex: "666666"))
-                        .lineSpacing(4)
+                        .lineSpacing(3)
 
                     Spacer()
-                        .frame(height: 30)
+                        .frame(height: 24)
 
                     // Steps
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         StepRow(number: 1, text: "Click 'Grant Permissions'")
                         StepRow(number: 2, text: "Find Typo in the list")
                         StepRow(number: 3, text: "Enable using the toggle")
                     }
 
                     Spacer()
-                        .frame(height: 20)
+                        .frame(height: 16)
 
                     // Help link
                     Button(action: {}) {
                         Text("I need help")
-                            .font(.system(size: 14))
+                            .font(.system(size: 13))
                             .foregroundColor(stepBlue)
                     }
                     .buttonStyle(.plain)
@@ -406,19 +408,19 @@ struct PermissionsStep: View {
                     // 3D Duolingo-style button
                     Button(action: grantPermissions) {
                         Text("Grant Permissions")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 56)
+                            .frame(height: 48)
                             .background(
                                 ZStack {
                                     // Bottom shadow layer (3D effect)
-                                    RoundedRectangle(cornerRadius: 16)
+                                    RoundedRectangle(cornerRadius: 14)
                                         .fill(hasAccessibilityPermission ? accentGreenDark : accentRedDark)
                                         .offset(y: 4)
 
                                     // Main button
-                                    RoundedRectangle(cornerRadius: 16)
+                                    RoundedRectangle(cornerRadius: 14)
                                         .fill(hasAccessibilityPermission ? accentGreen : accentRed)
                                 }
                             )
@@ -427,17 +429,17 @@ struct PermissionsStep: View {
                     .disabled(hasAccessibilityPermission)
 
                     Spacer()
-                        .frame(height: 40)
+                        .frame(height: 30)
                 }
-                .padding(.horizontal, 40)
-                .padding(.trailing, 30)
+                .padding(.horizontal, 32)
+                .padding(.trailing, 24)
 
                 // Wavy edge
                 WavyEdge(isGreen: hasAccessibilityPermission)
-                    .frame(width: 25)
-                    .offset(x: 12)
+                    .frame(width: 22)
+                    .offset(x: 10)
             }
-            .frame(width: 380)
+            .frame(width: 340)
 
             // Right side - Red/Green with status
             ZStack {
@@ -465,23 +467,23 @@ struct PermissionsStep: View {
                 }
 
                 // Status indicator
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     Image(systemName: hasAccessibilityPermission ? "checkmark" : "arrow.triangle.2.circlepath")
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(hasAccessibilityPermission ? accentGreen : accentRed)
                         .rotationEffect(.degrees(hasAccessibilityPermission ? 0 : rotationAngle))
 
                     Text(hasAccessibilityPermission ? "Permission Granted!" : "Waiting for Permissions")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundColor(hasAccessibilityPermission ? accentGreen : accentRed)
                 }
-                .padding(.horizontal, 28)
-                .padding(.vertical, 16)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 12)
                 .background(
-                    RoundedRectangle(cornerRadius: 30)
+                    RoundedRectangle(cornerRadius: 24)
                         .fill(Color.white)
                 )
-                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+                .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
             }
             .frame(maxWidth: .infinity)
         }
@@ -577,30 +579,96 @@ struct StepRow: View {
     let text: String
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             // Number circle
             ZStack {
                 Circle()
                     .fill(Color(hex: "2196F3"))
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
 
                 Text("\(number)")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
             }
 
             Text(text)
-                .font(.system(size: 15))
+                .font(.system(size: 13))
                 .foregroundColor(Color(hex: "333333"))
 
             Spacer()
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 12)
                 .stroke(Color(hex: "e8e8e8"), lineWidth: 1)
         )
+    }
+}
+
+// MARK: - License Dots Input Component
+
+struct LicenseDotsInput: View {
+    @Binding var licenseInput: String
+    @FocusState private var isFocused: Bool
+
+    // Format: 8-4-4-4-12 = 32 chars total
+    // 4 rows: row 0 = 8, row 1 = 4-4, row 2 = 4, row 3 = 12
+    private let totalChars = 32
+    private let charsPerRow = 8
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            // Hidden TextField to capture input
+            TextField("", text: $licenseInput)
+                .textFieldStyle(.plain)
+                .opacity(0.01)
+                .focused($isFocused)
+                .onChange(of: licenseInput) { _, newValue in
+                    let cleaned = newValue.uppercased().filter { $0.isLetter || $0.isNumber }
+                    if cleaned.count <= totalChars {
+                        licenseInput = cleaned
+                    } else {
+                        licenseInput = String(cleaned.prefix(totalChars))
+                    }
+                }
+
+            // 4 rows of 8 dots each
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(0..<4, id: \.self) { row in
+                    HStack(spacing: 6) {
+                        ForEach(0..<charsPerRow, id: \.self) { col in
+                            let charIndex = row * charsPerRow + col
+                            let hasChar = charIndex < licenseInput.count
+
+                            ZStack {
+                                // Dot (hidden when char is typed)
+                                Circle()
+                                    .fill(Color(hex: "c0c0c0"))
+                                    .frame(width: 8, height: 8)
+                                    .opacity(hasChar ? 0 : 1)
+
+                                // Character
+                                if hasChar {
+                                    let index = licenseInput.index(licenseInput.startIndex, offsetBy: charIndex)
+                                    Text(String(licenseInput[index]))
+                                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                                        .foregroundColor(Color(hex: "555555"))
+                                }
+                            }
+                            .frame(width: 16, height: 16)
+                        }
+                    }
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                isFocused = true
+            }
+        }
+        .onAppear {
+            isFocused = true
+        }
     }
 }
 
@@ -625,46 +693,38 @@ struct ActivationStep: View {
 
                 VStack(alignment: .leading, spacing: 0) {
                     Spacer()
-                        .frame(height: 50)
+                        .frame(height: 40)
 
                     Text("Activate")
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(Color(hex: "1a1a1a"))
 
                     Spacer()
-                        .frame(height: 16)
+                        .frame(height: 10)
 
                     Text("To continue, please activate your\nlicense of Typo.")
-                        .font(.system(size: 16))
+                        .font(.system(size: 14))
                         .foregroundColor(Color(hex: "666666"))
-                        .lineSpacing(4)
+                        .lineSpacing(3)
 
                     Spacer()
-                        .frame(height: 40)
+                        .frame(height: 30)
 
                     Text("Enter your license key below.")
-                        .font(.system(size: 14))
+                        .font(.system(size: 13))
                         .foregroundColor(Color(hex: "999999"))
 
                     Spacer()
-                        .frame(height: 12)
+                        .frame(height: 14)
 
-                    // License input field
-                    TextField("XXXX-XXXX-XXXX-XXXX", text: $licenseInput)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 18, design: .monospaced))
-                        .padding(16)
-                        .background(Color(hex: "f5f5f5"))
-                        .cornerRadius(12)
-                        .onChange(of: licenseInput) { _, newValue in
-                            licenseInput = formatLicenseKey(newValue)
-                        }
+                    // License key dots input
+                    LicenseDotsInput(licenseInput: $licenseInput)
 
                     if showError {
                         Text(errorMessage)
-                            .font(.system(size: 13))
+                            .font(.system(size: 12))
                             .foregroundColor(.red)
-                            .padding(.top, 12)
+                            .padding(.top, 10)
                     }
 
                     Spacer()
@@ -674,43 +734,43 @@ struct ActivationStep: View {
                         HStack(spacing: 8) {
                             if isValidating {
                                 ProgressView()
-                                    .scaleEffect(0.8)
+                                    .scaleEffect(0.7)
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             }
                             Text(isValidating ? "Validating..." : "Activate")
                         }
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundColor(licenseInput.count >= 19 ? .white : Color(hex: "999999"))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(licenseInput.count >= 32 ? .white : Color(hex: "999999"))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 56)
+                        .frame(height: 48)
                         .background(
                             ZStack {
                                 // Bottom shadow layer (3D effect)
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(licenseInput.count >= 19 ? Color(hex: "E65100") : Color(hex: "cccccc"))
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(licenseInput.count >= 32 ? Color(hex: "E65100") : Color(hex: "cccccc"))
                                     .offset(y: 4)
 
                                 // Main button
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(licenseInput.count >= 19 ? Color(hex: "FF9500") : Color(hex: "e0e0e0"))
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(licenseInput.count >= 32 ? Color(hex: "FF9500") : Color(hex: "e0e0e0"))
                             }
                         )
                     }
                     .buttonStyle(.plain)
-                    .disabled(licenseInput.count < 19 || isValidating)
+                    .disabled(licenseInput.count < 32 || isValidating)
 
                     Spacer()
-                        .frame(height: 40)
+                        .frame(height: 30)
                 }
-                .padding(.horizontal, 40)
-                .padding(.trailing, 30)
+                .padding(.horizontal, 32)
+                .padding(.trailing, 24)
 
                 // Wavy edge
                 WavyEdgeBlue()
-                    .frame(width: 25)
-                    .offset(x: 12)
+                    .frame(width: 22)
+                    .offset(x: 10)
             }
-            .frame(width: 380)
+            .frame(width: 340)
 
             // Right side - Blue with app icon
             ZStack {
@@ -719,16 +779,16 @@ struct ActivationStep: View {
                 // App icon in rounded frame
                 ZStack {
                     // Outer glow/frame
-                    RoundedRectangle(cornerRadius: 40)
+                    RoundedRectangle(cornerRadius: 32)
                         .fill(Color.white.opacity(0.1))
-                        .frame(width: 220, height: 220)
+                        .frame(width: 180, height: 180)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 40)
+                            RoundedRectangle(cornerRadius: 32)
                                 .stroke(Color.white.opacity(0.2), lineWidth: 2)
                         )
 
                     // Inner icon container
-                    RoundedRectangle(cornerRadius: 32)
+                    RoundedRectangle(cornerRadius: 26)
                         .fill(
                             LinearGradient(
                                 colors: [Color(hex: "ffecd2"), Color(hex: "fcb69f")],
@@ -736,32 +796,18 @@ struct ActivationStep: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 160, height: 160)
-                        .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
+                        .frame(width: 130, height: 130)
+                        .shadow(color: Color.black.opacity(0.2), radius: 16, x: 0, y: 8)
 
                     // Icon
                     Image(systemName: "text.cursor")
-                        .font(.system(size: 70, weight: .medium))
+                        .font(.system(size: 56, weight: .medium))
                         .foregroundColor(Color(hex: "d4a574"))
                 }
             }
             .frame(maxWidth: .infinity)
         }
         .ignoresSafeArea()
-    }
-
-    private func formatLicenseKey(_ input: String) -> String {
-        let cleaned = input.uppercased().filter { $0.isLetter || $0.isNumber }
-
-        var result = ""
-        for (index, char) in cleaned.prefix(16).enumerated() {
-            if index > 0 && index % 4 == 0 {
-                result += "-"
-            }
-            result.append(char)
-        }
-
-        return result
     }
 }
 
