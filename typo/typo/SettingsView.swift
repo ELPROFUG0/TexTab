@@ -1105,186 +1105,353 @@ struct AboutView: View {
 struct PluginsMarketplaceView: View {
     @Environment(\.colorScheme) var colorScheme
     @StateObject private var store = ActionsStore.shared
-    @State private var selectedCategory: PluginCategory? = nil
-    @State private var searchText = ""
+    @State private var selectedPlugin: PluginType? = nil
 
-    var filteredPlugins: [PluginType] {
-        var plugins = PluginType.allCases
-
-        if let category = selectedCategory {
-            plugins = plugins.filter { $0.category == category }
-        }
-
-        if !searchText.isEmpty {
-            plugins = plugins.filter {
-                $0.displayName.localizedCaseInsensitiveContains(searchText) ||
-                $0.description.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-
-        return plugins
-    }
-
-    var backgroundColor: Color {
+    // Adaptive gray: darker in light mode, lighter in dark mode
+    var textGrayColor: Color {
         colorScheme == .light
-            ? Color(red: 247/255, green: 247/255, blue: 245/255)
-            : Color(white: 0.12)
+            ? Color(white: 0.35)
+            : Color(white: 0.65)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Plugins")
-                    .font(.nunitoBold(size: 20))
-
-                Spacer()
-
-                // Search
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    TextField("Search plugins...", text: $searchText)
-                        .textFieldStyle(.plain)
-                        .frame(width: 150)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.gray.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
-            .padding(.bottom, 12)
-
-            // Category Filter
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    CategoryPill(title: "All", isSelected: selectedCategory == nil) {
-                        selectedCategory = nil
-                    }
-
-                    ForEach(PluginCategory.allCases, id: \.self) { category in
-                        CategoryPill(title: category.rawValue, isSelected: selectedCategory == category) {
-                            selectedCategory = category
-                        }
-                    }
-                }
-                .padding(.horizontal, 24)
-            }
-            .padding(.bottom, 16)
-
-            Divider()
-
-            // Plugins Grid
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(filteredPlugins, id: \.self) { plugin in
-                        PluginCard(plugin: plugin, isInstalled: store.isPluginInstalled(plugin)) {
-                            if store.isPluginInstalled(plugin) {
-                                store.uninstallPlugin(plugin)
-                            } else {
-                                store.installPlugin(plugin)
+        HStack(spacing: 0) {
+            // Sidebar - Plugins list
+            VStack(alignment: .leading, spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 2) {
+                        ForEach(PluginType.allCases, id: \.self) { plugin in
+                            PluginListRow(
+                                plugin: plugin,
+                                isSelected: selectedPlugin == plugin,
+                                isInstalled: store.isPluginInstalled(plugin)
+                            )
+                            .onTapGesture {
+                                selectedPlugin = plugin
                             }
                         }
                     }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 8)
                 }
-                .padding(24)
+                .scrollIndicators(.hidden)
+
+                // Coming soon text
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("More coming soon...")
+                        .font(.nunitoRegularBold(size: 13))
+                }
+                .foregroundColor(Color(red: 0.0, green: 0.584, blue: 1.0))
+                .padding(.vertical, 12)
+                .padding(.horizontal, 18)
             }
-            .background(backgroundColor)
+            .frame(width: 220)
+            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+
+            Divider()
+
+            // Plugin Detail or Empty State
+            if let plugin = selectedPlugin {
+                PluginDetailView(
+                    plugin: plugin,
+                    isInstalled: store.isPluginInstalled(plugin),
+                    onToggle: {
+                        if store.isPluginInstalled(plugin) {
+                            store.uninstallPlugin(plugin)
+                        } else {
+                            store.installPlugin(plugin)
+                        }
+                    }
+                )
+            } else {
+                // Empty state with dot pattern background
+                ZStack {
+                    DotPatternView()
+
+                    VStack(spacing: 24) {
+                        // Plugin icon - 3D style
+                        ZStack {
+                            // Bottom layer (3D effect)
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(colorScheme == .dark ? Color(white: 0.25) : Color(white: 0.7))
+                                .frame(width: 64, height: 64)
+                                .offset(y: 4)
+
+                            // Top layer
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(colorScheme == .dark ? Color.white : Color(white: 0.95))
+                                .frame(width: 64, height: 64)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.gray.opacity(colorScheme == .dark ? 0 : 0.3), lineWidth: 1)
+                                )
+
+                            Image(systemName: "puzzlepiece.extension")
+                                .font(.system(size: 28, weight: .medium))
+                                .foregroundColor(.black)
+                        }
+                        .frame(width: 64, height: 68)
+
+                        VStack(spacing: 10) {
+                            Text("No Plugin Selected")
+                                .font(.nunitoBold(size: 20))
+                                .foregroundColor(.primary)
+
+                            Text("Select a plugin from the list to see\ndetails and install it.")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(2)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(NSColor.windowBackgroundColor))
+            }
         }
     }
 }
 
-struct CategoryPill: View {
-    let title: String
+// MARK: - Plugin List Row
+
+struct PluginListRow: View {
+    @Environment(\.colorScheme) var colorScheme
+    let plugin: PluginType
     let isSelected: Bool
-    let action: () -> Void
+    let isInstalled: Bool
+
+    // Selected background color
+    var selectedBackgroundColor: Color {
+        if !isSelected {
+            return Color.clear
+        }
+        return colorScheme == .light
+            ? Color(red: 241/255, green: 241/255, blue: 239/255)
+            : Color.accentColor.opacity(0.1)
+    }
+
+    // Adaptive gray
+    var textGrayColor: Color {
+        colorScheme == .light
+            ? Color(white: 0.35)
+            : Color(white: 0.65)
+    }
 
     var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(isSelected ? .white : .secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(isSelected ? Color.accentColor : Color.gray.opacity(0.15))
-                .clipShape(Capsule())
+        HStack(spacing: 10) {
+            // Icon
+            Image(systemName: plugin.icon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(textGrayColor)
+                .frame(width: 24)
+
+            // Name
+            Text(plugin.displayName)
+                .font(.nunitoRegularBold(size: 14))
+                .foregroundColor(textGrayColor)
+                .lineLimit(1)
+
+            Spacer()
+
+            // Installed indicator
+            if isInstalled {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.green)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(selectedBackgroundColor)
+        )
+        .contentShape(Rectangle())
     }
 }
 
-struct PluginCard: View {
+// MARK: - Plugin Detail View
+
+struct PluginDetailView: View {
     @Environment(\.colorScheme) var colorScheme
     let plugin: PluginType
     let isInstalled: Bool
     let onToggle: () -> Void
 
-    var cardBackground: Color {
-        colorScheme == .light ? .white : Color(white: 0.18)
+    var inputBackgroundColor: Color {
+        colorScheme == .light
+            ? Color(red: 241/255, green: 241/255, blue: 239/255)
+            : Color(NSColor.controlBackgroundColor)
+    }
+
+    var textGrayColor: Color {
+        colorScheme == .light
+            ? Color(white: 0.35)
+            : Color(white: 0.65)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                // Icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.accentColor.opacity(0.15))
-                        .frame(width: 44, height: 44)
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header with icon and name
+                    HStack(spacing: 12) {
+                        // Icon
+                        Image(systemName: plugin.icon)
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(textGrayColor)
+                            .frame(width: 36, height: 36)
 
-                    Image(systemName: plugin.icon)
-                        .font(.system(size: 20))
-                        .foregroundColor(.accentColor)
+                        Text(plugin.displayName)
+                            .font(.nunitoBold(size: 22))
+                            .foregroundColor(textGrayColor)
+
+                        Spacer()
+                    }
+
+                    // Category badge
+                    HStack {
+                        Image(systemName: "folder")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(red: 0.0, green: 0.584, blue: 1.0))
+                        Text(plugin.category.rawValue)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color(red: 0.0, green: 0.584, blue: 1.0))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(red: 0.0, green: 0.584, blue: 1.0).opacity(0.1))
+                    .clipShape(Capsule())
+
+                    // Description
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Description")
+                            .font(.nunitoRegularBold(size: 14))
+                            .foregroundColor(textGrayColor)
+
+                        Text(plugin.description)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .lineSpacing(4)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(inputBackgroundColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                    )
+
+                    // Plugin info
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Details")
+                            .font(.nunitoRegularBold(size: 14))
+                            .foregroundColor(textGrayColor)
+
+                        // Input type
+                        HStack {
+                            Image(systemName: "arrow.right.circle")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .frame(width: 20)
+                            Text("Input:")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                            Text(pluginInputDescription)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(textGrayColor)
+                        }
+
+                        // Output type
+                        HStack {
+                            Image(systemName: "arrow.left.circle")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .frame(width: 20)
+                            Text("Output:")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                            Text(plugin.outputsImage ? "Image" : "Text")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(textGrayColor)
+                            if plugin.outputsImage {
+                                Image(systemName: "photo")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(inputBackgroundColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                    )
+
+                    Spacer()
                 }
+                .padding(24)
+            }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(plugin.displayName)
-                        .font(.nunitoRegularBold(size: 14))
-                        .foregroundColor(.primary)
+            Divider()
 
-                    Text(plugin.category.rawValue)
-                        .font(.system(size: 11))
+            // Bottom action bar
+            HStack {
+                if isInstalled {
+                    Text("This plugin is installed")
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
 
                 Spacer()
-            }
 
-            Text(plugin.description)
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-                .lineLimit(2)
+                // Install/Uninstall button - 3D style like Actions
+                Button(action: onToggle) {
+                    Text(isInstalled ? "Uninstall" : "Install")
+                        .font(.nunitoBold(size: 14))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(
+                            ZStack {
+                                // Bottom layer (3D effect)
+                                RoundedRectangle(cornerRadius: 18)
+                                    .fill(isInstalled ? Color(red: 0.6, green: 0.2, blue: 0.2) : Color(red: 0.0, green: 0.45, blue: 0.8))
+                                    .offset(y: 3)
 
-            Spacer()
-
-            // Install/Uninstall Button
-            Button(action: onToggle) {
-                HStack {
-                    Image(systemName: isInstalled ? "checkmark" : "arrow.down.circle")
-                        .font(.system(size: 12, weight: .medium))
-                    Text(isInstalled ? "Installed" : "Install")
-                        .font(.system(size: 12, weight: .medium))
+                                // Top layer
+                                RoundedRectangle(cornerRadius: 18)
+                                    .fill(isInstalled ? Color.red.opacity(0.8) : Color(red: 0.0, green: 0.584, blue: 1.0))
+                            }
+                        )
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(isInstalled ? Color.green.opacity(0.15) : Color.accentColor.opacity(0.15))
-                .foregroundColor(isInstalled ? .green : .accentColor)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+            .background(Color(NSColor.windowBackgroundColor))
         }
-        .padding(16)
-        .frame(height: 160)
-        .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.gray.opacity(0.15), lineWidth: 1)
-        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    var pluginInputDescription: String {
+        switch plugin {
+        case .qrGenerator:
+            return "Text or URL"
+        case .imageConverter:
+            return "Image from clipboard"
+        case .colorPicker:
+            return "None (picks from screen)"
+        }
     }
 }
+
 
 // MARK: - Plugin Info View (for action editor)
 
@@ -1359,24 +1526,6 @@ struct PluginInfoView: View {
         switch pluginType {
         case .qrGenerator:
             infoRow(icon: "qrcode", title: "Input", description: "Any text or URL to encode")
-        case .jsonFormatter:
-            infoRow(icon: "curlybraces", title: "Input", description: "Raw JSON to format and beautify")
-        case .base64Encode:
-            infoRow(icon: "arrow.right.circle", title: "Input", description: "Plain text to encode to Base64")
-        case .base64Decode:
-            infoRow(icon: "arrow.left.circle", title: "Input", description: "Base64 string to decode")
-        case .colorConverter:
-            infoRow(icon: "paintpalette", title: "Input", description: "HEX (#FF5733) or RGB (255, 87, 51)")
-        case .uuidGenerator:
-            infoRow(icon: "number.circle", title: "Input", description: "No input required - generates random UUID")
-        case .hashGenerator:
-            infoRow(icon: "lock.shield", title: "Input", description: "Text to generate MD5, SHA-256, SHA-512 hashes")
-        case .urlEncode:
-            infoRow(icon: "link", title: "Input", description: "Text with special characters to URL encode")
-        case .urlDecode:
-            infoRow(icon: "link.badge.plus", title: "Input", description: "URL encoded string to decode")
-        case .wordCount:
-            infoRow(icon: "textformat.123", title: "Input", description: "Text to count words, characters, lines")
         case .imageConverter:
             infoRow(icon: "photo.on.rectangle.angled", title: "Input", description: "Copy an image to clipboard, then run this action")
         case .colorPicker:

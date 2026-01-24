@@ -18,30 +18,12 @@ enum ActionType: String, Codable, CaseIterable {
 
 enum PluginType: String, Codable, CaseIterable {
     case qrGenerator = "qrGenerator"
-    case jsonFormatter = "jsonFormatter"
-    case base64Encode = "base64Encode"
-    case base64Decode = "base64Decode"
-    case colorConverter = "colorConverter"
-    case uuidGenerator = "uuidGenerator"
-    case hashGenerator = "hashGenerator"
-    case urlEncode = "urlEncode"
-    case urlDecode = "urlDecode"
-    case wordCount = "wordCount"
     case imageConverter = "imageConverter"
     case colorPicker = "colorPicker"
 
     var displayName: String {
         switch self {
         case .qrGenerator: return "QR Code Generator"
-        case .jsonFormatter: return "JSON Formatter"
-        case .base64Encode: return "Base64 Encode"
-        case .base64Decode: return "Base64 Decode"
-        case .colorConverter: return "Color Converter"
-        case .uuidGenerator: return "UUID Generator"
-        case .hashGenerator: return "Hash Generator"
-        case .urlEncode: return "URL Encode"
-        case .urlDecode: return "URL Decode"
-        case .wordCount: return "Word Count"
         case .imageConverter: return "Image Converter"
         case .colorPicker: return "Color Picker"
         }
@@ -50,15 +32,6 @@ enum PluginType: String, Codable, CaseIterable {
     var description: String {
         switch self {
         case .qrGenerator: return "Generate QR codes from text or URLs"
-        case .jsonFormatter: return "Format and beautify JSON"
-        case .base64Encode: return "Encode text to Base64"
-        case .base64Decode: return "Decode Base64 to text"
-        case .colorConverter: return "Convert colors between HEX, RGB, HSL"
-        case .uuidGenerator: return "Generate unique UUIDs"
-        case .hashGenerator: return "Generate MD5/SHA hashes"
-        case .urlEncode: return "URL encode text"
-        case .urlDecode: return "URL decode text"
-        case .wordCount: return "Count words, characters, lines"
         case .imageConverter: return "Convert images between PNG, JPEG, WEBP, TIFF"
         case .colorPicker: return "Pick any color from your screen with an eyedropper"
         }
@@ -67,15 +40,6 @@ enum PluginType: String, Codable, CaseIterable {
     var icon: String {
         switch self {
         case .qrGenerator: return "qrcode"
-        case .jsonFormatter: return "curlybraces"
-        case .base64Encode: return "arrow.right.circle"
-        case .base64Decode: return "arrow.left.circle"
-        case .colorConverter: return "paintpalette"
-        case .uuidGenerator: return "number.circle"
-        case .hashGenerator: return "lock.shield"
-        case .urlEncode: return "link"
-        case .urlDecode: return "link.badge.plus"
-        case .wordCount: return "textformat.123"
         case .imageConverter: return "photo.on.rectangle.angled"
         case .colorPicker: return "eyedropper"
         }
@@ -84,13 +48,6 @@ enum PluginType: String, Codable, CaseIterable {
     var category: PluginCategory {
         switch self {
         case .qrGenerator: return .generators
-        case .jsonFormatter: return .formatters
-        case .base64Encode, .base64Decode: return .encoders
-        case .colorConverter: return .converters
-        case .uuidGenerator: return .generators
-        case .hashGenerator: return .encoders
-        case .urlEncode, .urlDecode: return .encoders
-        case .wordCount: return .utilities
         case .imageConverter: return .converters
         case .colorPicker: return .utilities
         }
@@ -100,7 +57,7 @@ enum PluginType: String, Codable, CaseIterable {
     var outputsImage: Bool {
         switch self {
         case .qrGenerator, .imageConverter: return true
-        default: return false
+        case .colorPicker: return false
         }
     }
 
@@ -115,8 +72,8 @@ enum PluginType: String, Codable, CaseIterable {
     // Whether the plugin requires text input
     var requiresTextInput: Bool {
         switch self {
-        case .uuidGenerator, .imageConverter, .colorPicker: return false
-        default: return true
+        case .qrGenerator: return true
+        case .imageConverter, .colorPicker: return false
         }
     }
 
@@ -131,8 +88,6 @@ enum PluginType: String, Codable, CaseIterable {
 
 enum PluginCategory: String, CaseIterable {
     case generators = "Generators"
-    case formatters = "Formatters"
-    case encoders = "Encoders"
     case converters = "Converters"
     case utilities = "Utilities"
 }
