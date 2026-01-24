@@ -1100,19 +1100,10 @@ struct AboutView: View {
 
                                 Spacer()
 
-                                // Pro badge
-                                HStack(spacing: 6) {
-                                    Image(systemName: "crown.fill")
-                                        .font(.system(size: 12))
-                                    Text("PRO")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .tracking(1)
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.white.opacity(0.2))
-                                .clipShape(Capsule())
+                                // Pro fingerprint icon
+                                Image(systemName: "touchid")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.8))
                             }
                             .padding(.horizontal, 24)
                             .padding(.top, 24)
