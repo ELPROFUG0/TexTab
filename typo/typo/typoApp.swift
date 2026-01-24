@@ -143,8 +143,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("Bundle path: \(Bundle.main.bundlePath)")
 
         // Try to find the font in different locations
-        // Register both Nunito Bold and ExtraBold
-        let fontFiles = ["Nunito-Bold", "Nunito-ExtraBold"]
+        // Register Nunito Bold, ExtraBold, and Black
+        let fontFiles = ["Nunito-Bold", "Nunito-ExtraBold", "Nunito-Black"]
 
         for fontFile in fontFiles {
             let possiblePaths = [

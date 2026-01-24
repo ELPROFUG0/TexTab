@@ -9,6 +9,10 @@ import AppKit
 // MARK: - Custom Font Extension
 
 extension Font {
+    static func nunitoBlack(size: CGFloat) -> Font {
+        return .custom("Nunito Black", size: size)
+    }
+
     static func nunitoBold(size: CGFloat) -> Font {
         return .custom("Nunito ExtraBold", size: size)
     }
@@ -1047,31 +1051,327 @@ class PromptImprover {
 // MARK: - About View
 
 struct AboutView: View {
+    @Environment(\.colorScheme) var colorScheme
+    @State private var mousePosition: CGPoint = .zero
+    @State private var isHovering: Bool = false
+
+    // App accent blue color
+    private var appBlue: Color {
+        Color(red: 0.0, green: 0.584, blue: 1.0)
+    }
+
+    // Card color - #63C7FF
+    private var cardColor: Color {
+        Color(red: 0.388, green: 0.78, blue: 1.0) // #63C7FF
+    }
+
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "text.cursor")
-                .font(.system(size: 64))
-                .foregroundColor(.accentColor)
+        HStack(spacing: 50) {
+            // Left side - Membership Style Parallax Card
+            GeometryReader { geometry in
+                let centerX = geometry.size.width / 2
+                let centerY = geometry.size.height / 2
 
-            Text("Typo")
-                .font(.nunitoBold(size: 34))
+                // Calculate rotation based on mouse position
+                let rotateX = isHovering ? (mousePosition.y - centerY) / 18 : 0
+                let rotateY = isHovering ? -(mousePosition.x - centerX) / 18 : 0
 
-            Text("Version 1.0.0")
-                .foregroundColor(.secondary)
+                ZStack {
+                    // Main Card
+                    ZStack {
+                        // Card background - solid color #00A1FF
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(cardColor)
 
-            Text("Transform text with AI-powered shortcuts")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
+                        // Card content - all elements move with the card
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Top section - Member info
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("MEMBER SINCE")
+                                        .font(.system(size: 8, weight: .semibold))
+                                        .foregroundColor(.white.opacity(0.5))
+                                        .tracking(1.2)
 
-            Spacer()
+                                    Text("01/26")
+                                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                                        .foregroundColor(.white)
+                                }
 
-            Text("Made with SwiftUI")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                                Spacer()
+
+                                // Pro badge
+                                HStack(spacing: 6) {
+                                    Image(systemName: "crown.fill")
+                                        .font(.system(size: 12))
+                                    Text("PRO")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .tracking(1)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.white.opacity(0.2))
+                                .clipShape(Capsule())
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 24)
+
+                            Spacer()
+
+                            // Center - Title/Rank with decorative element
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Text")
+                                    .font(.nunitoBlack(size: 44))
+                                    .foregroundColor(.white)
+
+                                Text("Master")
+                                    .font(.nunitoBlack(size: 44))
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
+                            .padding(.horizontal, 24)
+
+                            Spacer()
+
+                            // Bottom section - Stats
+                            VStack(spacing: 14) {
+                                // Separator line
+                                Rectangle()
+                                    .fill(Color.white.opacity(0.2))
+                                    .frame(height: 1)
+                                    .padding(.horizontal, 24)
+
+                                // Stats row
+                                HStack(spacing: 0) {
+                                    // Typos fixed
+                                    VStack(spacing: 6) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "laurel.leading")
+                                                .font(.system(size: 24))
+                                                .foregroundColor(.white.opacity(0.7))
+
+                                            Text("42")
+                                                .font(.nunitoBlack(size: 32))
+                                                .foregroundColor(.white)
+
+                                            Image(systemName: "laurel.trailing")
+                                                .font(.system(size: 24))
+                                                .foregroundColor(.white.opacity(0.7))
+                                        }
+
+                                        Text("Fixes")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
+                                    .frame(maxWidth: .infinity)
+
+                                    // Divider
+                                    Rectangle()
+                                        .fill(Color.white.opacity(0.2))
+                                        .frame(width: 1, height: 55)
+
+                                    // Days active
+                                    VStack(spacing: 6) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "laurel.leading")
+                                                .font(.system(size: 24))
+                                                .foregroundColor(.white.opacity(0.7))
+
+                                            Text("14")
+                                                .font(.nunitoBlack(size: 32))
+                                                .foregroundColor(.white)
+
+                                            Image(systemName: "laurel.trailing")
+                                                .font(.system(size: 24))
+                                                .foregroundColor(.white.opacity(0.7))
+                                        }
+
+                                        Text("Days")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                }
+
+                                // Bottom separator line
+                                Rectangle()
+                                    .fill(Color.white.opacity(0.2))
+                                    .frame(height: 1)
+                                    .padding(.horizontal, 24)
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 24)
+                        }
+
+                        // Subtle inner border
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    }
+                    .frame(width: 280, height: 400)
+                    .shadow(
+                        color: cardColor.opacity(isHovering ? 0.4 : 0.25),
+                        radius: isHovering ? 30 : 20,
+                        x: 0,
+                        y: isHovering ? 15 : 10
+                    )
+                    .rotation3DEffect(
+                        .degrees(Double(rotateX)),
+                        axis: (x: 1, y: 0, z: 0),
+                        perspective: 0.5
+                    )
+                    .rotation3DEffect(
+                        .degrees(Double(rotateY)),
+                        axis: (x: 0, y: 1, z: 0),
+                        perspective: 0.5
+                    )
+                    .scaleEffect(isHovering ? 1.04 : 1.0)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isHovering)
+                    .animation(.spring(response: 0.15, dampingFraction: 0.8), value: mousePosition)
+                    .position(x: centerX, y: centerY)
+                }
+                .onContinuousHover { phase in
+                    switch phase {
+                    case .active(let location):
+                        mousePosition = location
+                        isHovering = true
+                    case .ended:
+                        isHovering = false
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            mousePosition = CGPoint(x: centerX, y: centerY)
+                        }
+                    }
+                }
+            }
+            .frame(width: 340)
+
+            // Right side - Text and Buttons
+            VStack(alignment: .leading, spacing: 24) {
+                Spacer()
+
+                // App name and version
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Typo")
+                        .font(.nunitoBold(size: 36))
+                        .foregroundColor(.primary)
+
+                    Text("Version 1.0.0")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                // Description
+                Text("Transform text with AI-powered shortcuts. Select any text and use keyboard shortcuts to fix grammar, translate, rephrase, and more.")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer().frame(height: 8)
+
+                // Action buttons - vertical stack
+                VStack(spacing: 12) {
+                    // Check for Updates button - primary style
+                    Button(action: {
+                        if let url = URL(string: "https://typo.app/updates") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("Check for Updates")
+                                .font(.nunitoRegularBold(size: 14))
+                            Spacer()
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(red: 0.0, green: 0.45, blue: 0.8))
+                                    .offset(y: 3)
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(appBlue)
+                            }
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .pointerCursor()
+
+                    // Support button - secondary style
+                    Button(action: {
+                        if let url = URL(string: "https://typo.app/support") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "questionmark.circle")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("Support")
+                                .font(.nunitoRegularBold(size: 14))
+                            Spacer()
+                        }
+                        .foregroundColor(appBlue)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(appBlue.opacity(0.25))
+                                    .offset(y: 3)
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(appBlue.opacity(0.12))
+                            }
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .pointerCursor()
+
+                    // Manage Account button - secondary style
+                    Button(action: {
+                        if let url = URL(string: "https://typo.app/account") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "person.circle")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("Manage Account")
+                                .font(.nunitoRegularBold(size: 14))
+                            Spacer()
+                        }
+                        .foregroundColor(appBlue)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(appBlue.opacity(0.25))
+                                    .offset(y: 3)
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(appBlue.opacity(0.12))
+                            }
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .pointerCursor()
+                }
+                .frame(maxWidth: 260)
+
+                Spacer()
+
+                // Footer
+                Text("Made with SwiftUI")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.6))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, 40)
         }
+        .padding(.leading, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+        .background(Color(NSColor.windowBackgroundColor))
     }
 }
 

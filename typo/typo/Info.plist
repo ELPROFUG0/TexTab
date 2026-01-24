@@ -6,6 +6,7 @@
 	<array>
 		<string>Nunito-Bold.ttf</string>
 		<string>Nunito-ExtraBold.ttf</string>
+		<string>Nunito-Black.ttf</string>
 	</array>
 	<key>ATSApplicationFontsPath</key>
 	<string>Fonts</string>
