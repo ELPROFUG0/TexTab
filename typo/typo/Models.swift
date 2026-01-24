@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import Carbon.HIToolbox
 
 // MARK: - Action Type
 
@@ -100,15 +101,17 @@ struct Action: Identifiable, Codable, Equatable, Hashable {
     var icon: String
     var prompt: String
     var shortcut: String
+    var shortcutModifiers: [String]
     var actionType: ActionType
     var pluginType: PluginType?
 
-    init(id: UUID = UUID(), name: String, icon: String, prompt: String, shortcut: String = "", actionType: ActionType = .ai, pluginType: PluginType? = nil) {
+    init(id: UUID = UUID(), name: String, icon: String, prompt: String, shortcut: String = "", shortcutModifiers: [String] = ["\u{2318}", "\u{21E7}"], actionType: ActionType = .ai, pluginType: PluginType? = nil) {
         self.id = id
         self.name = name
         self.icon = icon
         self.prompt = prompt
         self.shortcut = shortcut
+        self.shortcutModifiers = shortcutModifiers
         self.actionType = actionType
         self.pluginType = pluginType
     }
@@ -122,8 +125,23 @@ struct Action: Identifiable, Codable, Equatable, Hashable {
         return actionType == .plugin
     }
 
+    /// Convert stored modifier symbols to Carbon modifier flags
+    var carbonModifiers: UInt32 {
+        var mods: UInt32 = 0
+        for m in shortcutModifiers {
+            switch m {
+            case "\u{2318}": mods |= UInt32(cmdKey)
+            case "\u{21E7}": mods |= UInt32(shiftKey)
+            case "\u{2325}": mods |= UInt32(optionKey)
+            case "^":        mods |= UInt32(controlKey)
+            default: break
+            }
+        }
+        return mods
+    }
+
     private enum CodingKeys: String, CodingKey {
-        case id, name, icon, prompt, shortcut, actionType, pluginType
+        case id, name, icon, prompt, shortcut, shortcutModifiers, actionType, pluginType
         case isWebSearch // Legacy key for reading old data
     }
 
@@ -135,6 +153,7 @@ struct Action: Identifiable, Codable, Equatable, Hashable {
         icon = try container.decode(String.self, forKey: .icon)
         prompt = try container.decode(String.self, forKey: .prompt)
         shortcut = try container.decodeIfPresent(String.self, forKey: .shortcut) ?? ""
+        shortcutModifiers = try container.decodeIfPresent([String].self, forKey: .shortcutModifiers) ?? ["\u{2318}", "\u{21E7}"]
 
         // Handle legacy isWebSearch field
         if let legacyWebSearch = try container.decodeIfPresent(Bool.self, forKey: .isWebSearch), legacyWebSearch {
@@ -153,6 +172,7 @@ struct Action: Identifiable, Codable, Equatable, Hashable {
         try container.encode(icon, forKey: .icon)
         try container.encode(prompt, forKey: .prompt)
         try container.encode(shortcut, forKey: .shortcut)
+        try container.encode(shortcutModifiers, forKey: .shortcutModifiers)
         try container.encode(actionType, forKey: .actionType)
         try container.encodeIfPresent(pluginType, forKey: .pluginType)
     }

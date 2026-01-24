@@ -709,6 +709,7 @@ struct ActionEditorView: View {
     @State private var showIconPicker = false
     @State private var isNameFocused = false
     @State private var showDeleteConfirmation = false
+    @State private var shortcutConflict: String? = nil
 
     // Input background color: #f1f1ef for light mode, controlBackgroundColor for dark mode
     var inputBackgroundColor: Color {
@@ -764,7 +765,7 @@ struct ActionEditorView: View {
                     VStack(spacing: 0) {
                         // Tooltip appears above
                         if isRecordingShortcut {
-                            ShortcutTooltip(recordedKeys: recordedKeys)
+                            ShortcutTooltip(recordedKeys: recordedKeys, conflictName: shortcutConflict)
                                 .transition(.asymmetric(
                                     insertion: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity),
                                     removal: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity)
@@ -782,8 +783,9 @@ struct ActionEditorView: View {
                                         .foregroundColor(Color.gray.opacity(0.5))
                                 } else {
                                     HStack(spacing: 6) {
-                                        ShortcutInputKey(text: "⌘")
-                                        ShortcutInputKey(text: "⇧")
+                                        ForEach(action.shortcutModifiers, id: \.self) { mod in
+                                            ShortcutInputKey(text: mod)
+                                        }
                                         ShortcutInputKey(text: action.shortcut)
                                     }
                                 }
@@ -966,25 +968,87 @@ struct ActionEditorView: View {
         .onAppear {
             // Initialize recorded keys from existing shortcut
             if !action.shortcut.isEmpty {
-                recordedKeys = ["⌘", "⇧", action.shortcut]
+                recordedKeys = action.shortcutModifiers + [action.shortcut]
             }
         }
     }
 
     func startRecordingShortcut() {
         isRecordingShortcut = true
-        recordedKeys = ["⌘", "⇧"]
+        recordedKeys = []
+        shortcutConflict = nil
 
-        // Monitor for key press
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if self.isRecordingShortcut {
+        // Monitor for key events (keyDown + flagsChanged for real-time modifier display)
+        NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+            guard self.isRecordingShortcut else { return event }
+
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+            // Build current modifier keys array
+            var currentModifiers: [String] = []
+            if modifiers.contains(.control) { currentModifiers.append("^") }
+            if modifiers.contains(.option) { currentModifiers.append("\u{2325}") }
+            if modifiers.contains(.shift) { currentModifiers.append("\u{21E7}") }
+            if modifiers.contains(.command) { currentModifiers.append("\u{2318}") }
+
+            if event.type == .flagsChanged {
+                // Clear conflict when modifiers change
+                self.shortcutConflict = nil
+                // Update recorded keys to show current modifiers in real-time
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                    self.recordedKeys = currentModifiers
+                }
+                return event
+            }
+
+            if event.type == .keyDown {
+                // Must have Command or Option to complete
+                let hasCommand = modifiers.contains(.command)
+                let hasOption = modifiers.contains(.option)
+
+                if !hasCommand && !hasOption {
+                    return event
+                }
+
+                // Add the final key
                 let key = event.charactersIgnoringModifiers?.uppercased() ?? ""
                 if !key.isEmpty && key.count == 1 {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        self.recordedKeys = ["⌘", "⇧", key]
+                    var finalKeys = currentModifiers
+                    finalKeys.append(key)
+
+                    // Check for conflicts with other actions
+                    let conflictingAction = ActionsStore.shared.actions.first { other in
+                        other.id != self.action.id &&
+                        !other.shortcut.isEmpty &&
+                        other.shortcut == key &&
+                        other.shortcutModifiers == currentModifiers
                     }
+
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        self.recordedKeys = finalKeys
+                    }
+
+                    if let conflict = conflictingAction {
+                        // Show conflict error - don't save
+                        withAnimation {
+                            self.shortcutConflict = conflict.name
+                        }
+                        // Keep recording open so user can try again
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            if self.shortcutConflict != nil {
+                                withAnimation {
+                                    self.shortcutConflict = nil
+                                    self.recordedKeys = []
+                                }
+                            }
+                        }
+                        return nil
+                    }
+
+                    self.action.shortcutModifiers = currentModifiers
                     self.action.shortcut = key
                     self.hasUnsavedChanges = true
+                    self.shortcutConflict = nil
 
                     // Close tooltip after a delay
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -1042,35 +1106,64 @@ struct ActionEditorView: View {
 
 struct ShortcutTooltip: View {
     let recordedKeys: [String]
+    var conflictName: String? = nil
+
+    private var hasConflict: Bool { conflictName != nil }
+
+    // Pad to at least 3 slots so all keys are visible
+    private var displaySlots: [(id: String, text: String, filled: Bool)] {
+        let slotCount = max(recordedKeys.count, 3)
+        return (0..<slotCount).map { index in
+            if index < recordedKeys.count {
+                return (id: "slot-\(index)-\(recordedKeys[index])", text: recordedKeys[index], filled: true)
+            } else {
+                return (id: "empty-\(index)", text: "", filled: false)
+            }
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             // Tooltip content
             VStack(spacing: 8) {
                 HStack(spacing: 8) {
-                    Text("e.g.")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                    if !hasConflict {
+                        Text("e.g.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
 
-                    // Always show 3 key slots
-                    ForEach(0..<3, id: \.self) { index in
-                        if index < recordedKeys.count {
-                            TooltipKey(text: recordedKeys[index])
-                                .transition(.asymmetric(
-                                    insertion: .scale(scale: 0.5).combined(with: .opacity),
-                                    removal: .opacity
-                                ))
-                                .id("key-\(index)-\(recordedKeys[index])")
-                        } else {
-                            TooltipKey(text: "")
-                                .opacity(0.4)
-                        }
+                    ForEach(displaySlots, id: \.id) { slot in
+                        TooltipKey(text: slot.text, isError: hasConflict && slot.filled)
+                            .opacity(slot.filled ? 1 : 0.4)
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.5).combined(with: .opacity),
+                                removal: .opacity
+                            ))
                     }
                 }
 
-                Text("Recording...")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                if let conflictName = conflictName {
+                    VStack(spacing: 4) {
+                        Text("Already in use")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.red)
+
+                        Text("Used by \"\(conflictName)\"")
+                            .font(.system(size: 11))
+                            .foregroundColor(.red.opacity(0.8))
+                    }
+                } else {
+                    VStack(spacing: 4) {
+                        Text("Recording...")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        Text("Press \u{2318} or \u{2325} + key")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary.opacity(0.7))
+                    }
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -1096,27 +1189,28 @@ struct ShortcutTooltip: View {
 struct TooltipKey: View {
     @Environment(\.colorScheme) var colorScheme
     let text: String
+    var isError: Bool = false
 
     var body: some View {
         ZStack {
             // Bottom layer (3D effect)
             RoundedRectangle(cornerRadius: 6)
-                .fill(colorScheme == .dark ? Color(white: 0.25) : Color(white: 0.7))
+                .fill(isError ? Color.red.opacity(0.6) : (colorScheme == .dark ? Color(white: 0.25) : Color(white: 0.7)))
                 .frame(width: 28, height: 28)
                 .offset(y: 2)
 
             // Top layer
             RoundedRectangle(cornerRadius: 6)
-                .fill(colorScheme == .dark ? Color.white : Color(white: 0.95))
+                .fill(isError ? Color.red.opacity(0.15) : (colorScheme == .dark ? Color.white : Color(white: 0.95)))
                 .frame(width: 28, height: 28)
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.gray.opacity(colorScheme == .dark ? 0 : 0.3), lineWidth: 1)
+                        .stroke(isError ? Color.red.opacity(0.5) : Color.gray.opacity(colorScheme == .dark ? 0 : 0.3), lineWidth: isError ? 2 : 1)
                 )
 
             Text(text)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.black)
+                .foregroundColor(isError ? .red : .black)
         }
         .frame(width: 28, height: 30)
     }

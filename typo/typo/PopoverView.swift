@@ -1232,8 +1232,9 @@ struct ActionRow: View {
 
             if !action.shortcut.isEmpty {
                 HStack(spacing: 4) {
-                    KeyboardKey("⌘")
-                    KeyboardKey("⇧")
+                    ForEach(action.shortcutModifiers, id: \.self) { mod in
+                        KeyboardKey(mod)
+                    }
                     KeyboardKey(action.shortcut)
                 }
             }

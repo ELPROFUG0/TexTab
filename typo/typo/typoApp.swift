@@ -295,13 +295,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         actionHotKeyRefs.removeAll()
 
         let actions = ActionsStore.shared.actions
-        let modifiers = UInt32(cmdKey | shiftKey)
 
         for (index, action) in actions.enumerated() {
             guard !action.shortcut.isEmpty,
                   let keyCode = keyCodeForCharacter(action.shortcut.uppercased()) else {
                 continue
             }
+
+            let modifiers = action.carbonModifiers
 
             var hotKeyID = EventHotKeyID()
             hotKeyID.signature = OSType(0x5459504F) // "TYPO"
@@ -312,7 +313,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             if status == noErr {
                 actionHotKeyRefs.append(hotKeyRef)
-                print("Action hotkey registered: Cmd + Shift + \(action.shortcut) for '\(action.name)'")
+                print("Action hotkey registered: \(action.shortcutModifiers.joined()) + \(action.shortcut) for '\(action.name)'")
             }
         }
 
