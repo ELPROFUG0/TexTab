@@ -362,8 +362,8 @@ struct PermissionsStep: View {
     // Colors
     private let accentYellow = Color(hex: "F9A825")
     private let accentYellowDark = Color(hex: "F57F17")
-    private let accentGreen = Color(hex: "43A047")
-    private let accentGreenDark = Color(hex: "2E7D32")
+    private let accentGreen = Color(hex: "00ce44")
+    private let accentGreenDark = Color(hex: "00a838")
     private let stepBlue = Color(hex: "2196F3")
 
     var body: some View {
@@ -391,29 +391,45 @@ struct PermissionsStep: View {
                     Spacer()
                         .frame(height: 24)
 
-                    // Steps
-                    VStack(spacing: 12) {
-                        StepRow(number: 1, text: "Click 'Grant Permissions'")
-                        StepRow(number: 2, text: "Find Typo in the list")
-                        StepRow(number: 3, text: "Enable using the toggle")
-                    }
+                    // Steps or Features
+                    if hasAccessibilityPermission {
+                        // Show simple feature list when permission is granted
+                        VStack(alignment: .leading, spacing: 14) {
+                            PermissionCheckItem(text: "Global keyboard shortcuts")
+                            PermissionCheckItem(text: "Text selection detection")
+                            PermissionCheckItem(text: "Paste transformed text")
+                        }
+                        .padding(.vertical, 8)
+                    } else {
+                        VStack(spacing: 12) {
+                            StepRow(number: 1, text: "Click 'Grant Permissions'")
+                            StepRow(number: 2, text: "Find Typo in the list")
+                            StepRow(number: 3, text: "Enable using the toggle")
+                        }
 
-                    Spacer()
-                        .frame(height: 16)
+                        Spacer()
+                            .frame(height: 16)
 
-                    // Help link
-                    Button(action: {}) {
-                        Text("I need help")
-                            .font(.system(size: 13))
-                            .foregroundColor(stepBlue)
+                        // Help link
+                        Button(action: {}) {
+                            Text("I need help")
+                                .font(.system(size: 13))
+                                .foregroundColor(stepBlue)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
 
                     Spacer()
 
                     // 3D Duolingo-style button
-                    Button(action: grantPermissions) {
-                        Text("Grant Permissions")
+                    Button(action: {
+                        if hasAccessibilityPermission {
+                            onNext()
+                        } else {
+                            grantPermissions()
+                        }
+                    }) {
+                        Text(hasAccessibilityPermission ? "Continue" : "Grant Permissions")
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -432,7 +448,6 @@ struct PermissionsStep: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .disabled(hasAccessibilityPermission)
 
                     Spacer()
                         .frame(height: 30)
@@ -510,13 +525,6 @@ struct PermissionsStep: View {
         }
         .onDisappear {
             permissionCheckTimer?.invalidate()
-        }
-        .onChange(of: hasAccessibilityPermission) { _, newValue in
-            if newValue {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    onNext()
-                }
-            }
         }
     }
 
@@ -676,7 +684,7 @@ struct WavyEdge: View {
                 path.addLine(to: CGPoint(x: width, y: 0))
                 path.closeSubpath()
             }
-            .fill(isGreen ? Color(hex: "43A047") : Color(hex: "F9A825"))
+            .fill(isGreen ? Color(hex: "00ce44") : Color(hex: "F9A825"))
         }
         .animation(.easeInOut(duration: 0.5), value: isGreen)
     }
@@ -718,6 +726,25 @@ struct StepRow: View {
                         .stroke(Color(hex: "e8e8e8"), lineWidth: 1)
                 )
         )
+    }
+}
+
+// Simple permission check item (shown when permission granted)
+struct PermissionCheckItem: View {
+    let text: String
+
+    private let checkGreen = Color(hex: "00ce44")
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 18))
+                .foregroundColor(checkGreen)
+
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundColor(Color(hex: "333333"))
+        }
     }
 }
 
