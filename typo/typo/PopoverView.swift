@@ -19,6 +19,13 @@ struct PopoverView: View {
     @State private var shouldScrollToSelection = false
     @FocusState private var isSearchFocused: Bool
 
+    // Image converter states
+    @State private var clipboardImage: NSImage?
+    @State private var selectedImageFormat: ImageFormat = .png
+    @State private var jpegQuality: Double = 0.9
+    @State private var convertedImageData: Data?
+    @State private var showImageConverter = false
+
     var onClose: () -> Void
     var onOpenSettings: () -> Void
     var initialAction: Action?
@@ -36,7 +43,10 @@ struct PopoverView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let image = resultImage, let action = activeAction {
+            if showImageConverter, let action = activeAction {
+                // Image converter view
+                imageConverterView(action: action)
+            } else if let image = resultImage, let action = activeAction {
                 // Image result view (for plugins like QR generator)
                 imageResultView(image: image, action: action)
             } else if let result = resultText, let action = activeAction {
@@ -62,10 +72,20 @@ struct PopoverView: View {
         )
         .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
         .onAppear {
+            // Reset all states when popup appears
+            clipboardImage = nil
+            showImageConverter = false
+            convertedImageData = nil
+            resultText = nil
+            resultImage = nil
+
             if let action = initialAction {
                 activeAction = action
                 isProcessing = true
                 executeAction(action)
+            } else {
+                activeAction = nil
+                isProcessing = false
             }
         }
     }
@@ -526,6 +546,311 @@ struct PopoverView: View {
         }
     }
 
+    // MARK: - Image Converter View
+
+    func imageConverterView(action: Action) -> some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text(action.name)
+                    .font(.nunitoRegularBold(size: 13))
+                    .foregroundColor(.accentColor)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.accentColor.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                Image(systemName: "puzzlepiece.extension")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                Button(action: {
+                    showImageConverter = false
+                    clipboardImage = nil
+                    activeAction = nil
+                    convertedImageData = nil
+                    if initialAction != nil {
+                        onClose()
+                    }
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(16)
+
+            Divider()
+
+            // Content
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Image preview
+                    if let image = clipboardImage {
+                        VStack(spacing: 8) {
+                            ZStack(alignment: .topTrailing) {
+                                Image(nsImage: image)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(maxWidth: 300, maxHeight: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                    )
+                                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+
+                                // Remove image button
+                                Button(action: {
+                                    clipboardImage = nil
+                                    convertedImageData = nil
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(.white)
+                                        .background(Circle().fill(Color.black.opacity(0.5)))
+                                }
+                                .buttonStyle(.plain)
+                                .offset(x: 8, y: -8)
+                            }
+
+                            Text(PluginProcessor.shared.getImageInfo(image))
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.top, 16)
+                    } else {
+                        // No image state
+                        VStack(spacing: 16) {
+                            Image(systemName: "photo.badge.plus")
+                                .font(.system(size: 40))
+                                .foregroundColor(.secondary)
+
+                            Text("No image loaded")
+                                .font(.nunitoRegularBold(size: 14))
+                                .foregroundColor(.secondary)
+
+                            Text("Copy an image and click the button below")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary.opacity(0.8))
+                                .multilineTextAlignment(.center)
+
+                            Button(action: {
+                                if let image = PluginProcessor.shared.getImageFromClipboard() {
+                                    clipboardImage = image
+                                    convertedImageData = nil
+                                    updateConvertedPreview()
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "doc.on.clipboard")
+                                        .font(.system(size: 12))
+                                    Text("Paste Image")
+                                        .font(.system(size: 13, weight: .medium))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(Color.accentColor)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 30)
+                    }
+
+                    // Format selection
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Output Format")
+                            .font(.nunitoRegularBold(size: 13))
+                            .foregroundColor(.primary)
+
+                        // Format buttons grid
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                            ForEach(ImageFormat.allCases, id: \.self) { format in
+                                Button(action: {
+                                    selectedImageFormat = format
+                                }) {
+                                    Text(format.rawValue)
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(selectedImageFormat == format ? .white : .primary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(selectedImageFormat == format ? Color.accentColor : Color.gray.opacity(0.1))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+
+                    // Quality slider for JPEG
+                    if selectedImageFormat == .jpeg {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Quality")
+                                    .font(.nunitoRegularBold(size: 13))
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Text("\(Int(jpegQuality * 100))%")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Slider(value: $jpegQuality, in: 0.1...1.0, step: 0.1)
+                                .tint(.accentColor)
+                        }
+                        .padding(.horizontal, 20)
+                    }
+
+                    // Converted size preview
+                    if let data = convertedImageData {
+                        let sizeKB = Double(data.count) / 1024.0
+                        HStack {
+                            Image(systemName: "doc.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.green)
+                            if sizeKB > 1024 {
+                                Text("Converted: \(String(format: "%.1f", sizeKB / 1024.0)) MB")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text("Converted: \(String(format: "%.1f", sizeKB)) KB")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+                .padding(.bottom, 16)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Divider()
+
+            // Footer with buttons
+            HStack {
+                HStack(spacing: 4) {
+                    KeyboardKey("esc")
+                    Text("close")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 8) {
+                    // Refresh from clipboard
+                    Button(action: {
+                        if let image = PluginProcessor.shared.getImageFromClipboard() {
+                            clipboardImage = image
+                            convertedImageData = nil
+                        }
+                    }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Refresh from clipboard")
+
+                    // Convert button
+                    Button(action: {
+                        convertAndSaveImage()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 11))
+                            Text("Convert & Save")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(clipboardImage == nil)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(NSColor.controlBackgroundColor))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onKeyPress(.escape) {
+            showImageConverter = false
+            clipboardImage = nil
+            activeAction = nil
+            convertedImageData = nil
+            if initialAction != nil {
+                onClose()
+            }
+            return .handled
+        }
+        .onChange(of: selectedImageFormat) { _, _ in
+            // Update preview when format changes
+            updateConvertedPreview()
+        }
+        .onChange(of: jpegQuality) { _, _ in
+            // Update preview when quality changes
+            if selectedImageFormat == .jpeg {
+                updateConvertedPreview()
+            }
+        }
+    }
+
+    func updateConvertedPreview() {
+        guard let image = clipboardImage else { return }
+
+        Task { @MainActor in
+            let result = PluginProcessor.shared.convertImage(image, to: selectedImageFormat, quality: jpegQuality)
+            if case .imageData(let data, _) = result {
+                convertedImageData = data
+            }
+        }
+    }
+
+    func convertAndSaveImage() {
+        guard let image = clipboardImage else { return }
+
+        let result = PluginProcessor.shared.convertImage(image, to: selectedImageFormat, quality: jpegQuality)
+
+        switch result {
+        case .imageData(let data, let format):
+            let savePanel = NSSavePanel()
+            savePanel.allowedContentTypes = [UTType(filenameExtension: format.fileExtension) ?? .png]
+            savePanel.nameFieldStringValue = "converted.\(format.fileExtension)"
+            savePanel.canCreateDirectories = true
+
+            savePanel.begin { response in
+                if response == .OK, let url = savePanel.url {
+                    do {
+                        try data.write(to: url)
+                        // Close the view after successful save
+                        DispatchQueue.main.async {
+                            self.showImageConverter = false
+                            self.clipboardImage = nil
+                            self.activeAction = nil
+                            self.convertedImageData = nil
+                            if self.initialAction != nil {
+                                self.onClose()
+                            }
+                        }
+                    } catch {
+                        self.resultText = "Error saving file: \(error.localizedDescription)"
+                    }
+                }
+            }
+        case .error(let error):
+            resultText = error
+            showImageConverter = false
+        default:
+            break
+        }
+    }
+
     // MARK: - Actions
 
     func selectCurrentAction() {
@@ -539,8 +864,19 @@ struct PopoverView: View {
     func executeAction(_ action: Action) {
         let textToProcess = textManager.capturedText
 
-        // UUID generator doesn't need input text
-        let needsInput = action.pluginType != .uuidGenerator
+        // Check if plugin requires image input
+        if action.isPlugin, let pluginType = action.pluginType, pluginType.requiresImageInput {
+            // Handle image converter specially - show empty state, user must click Paste
+            activeAction = action
+            isProcessing = false
+            clipboardImage = nil  // Always start with no image
+            convertedImageData = nil
+            showImageConverter = true
+            return
+        }
+
+        // Check if text input is needed
+        let needsInput = action.pluginType?.requiresTextInput ?? true
 
         guard !textToProcess.isEmpty || !needsInput else {
             resultText = "No text selected. Select some text first!"
@@ -552,6 +888,7 @@ struct PopoverView: View {
         activeAction = action
         resultImage = nil
         resultText = nil
+        showImageConverter = false
 
         // Handle plugins
         if action.isPlugin, let pluginType = action.pluginType {
@@ -567,6 +904,8 @@ struct PopoverView: View {
                     resultText = text
                 case .image(let image):
                     resultImage = image
+                case .imageData(_, _):
+                    break // Handled separately
                 case .error(let error):
                     resultText = "Error: \(error)"
                 }

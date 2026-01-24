@@ -27,6 +27,7 @@ enum PluginType: String, Codable, CaseIterable {
     case urlEncode = "urlEncode"
     case urlDecode = "urlDecode"
     case wordCount = "wordCount"
+    case imageConverter = "imageConverter"
 
     var displayName: String {
         switch self {
@@ -40,6 +41,7 @@ enum PluginType: String, Codable, CaseIterable {
         case .urlEncode: return "URL Encode"
         case .urlDecode: return "URL Decode"
         case .wordCount: return "Word Count"
+        case .imageConverter: return "Image Converter"
         }
     }
 
@@ -55,6 +57,7 @@ enum PluginType: String, Codable, CaseIterable {
         case .urlEncode: return "URL encode text"
         case .urlDecode: return "URL decode text"
         case .wordCount: return "Count words, characters, lines"
+        case .imageConverter: return "Convert images between PNG, JPEG, WEBP, TIFF"
         }
     }
 
@@ -70,6 +73,7 @@ enum PluginType: String, Codable, CaseIterable {
         case .urlEncode: return "link"
         case .urlDecode: return "link.badge.plus"
         case .wordCount: return "textformat.123"
+        case .imageConverter: return "photo.on.rectangle.angled"
         }
     }
 
@@ -83,14 +87,31 @@ enum PluginType: String, Codable, CaseIterable {
         case .hashGenerator: return .encoders
         case .urlEncode, .urlDecode: return .encoders
         case .wordCount: return .utilities
+        case .imageConverter: return .converters
         }
     }
 
     // Whether the output is an image (needs special handling)
     var outputsImage: Bool {
         switch self {
-        case .qrGenerator: return true
+        case .qrGenerator, .imageConverter: return true
         default: return false
+        }
+    }
+
+    // Whether the plugin requires image input from clipboard
+    var requiresImageInput: Bool {
+        switch self {
+        case .imageConverter: return true
+        default: return false
+        }
+    }
+
+    // Whether the plugin requires text input
+    var requiresTextInput: Bool {
+        switch self {
+        case .uuidGenerator, .imageConverter: return false
+        default: return true
         }
     }
 }
