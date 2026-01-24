@@ -40,43 +40,60 @@ struct SettingsView: View {
             // Custom Tab Bar - solo textos con Nunito
             HStack(spacing: 24) {
                 TabTextButton(title: "General", isSelected: selectedTab == 0) {
-                    selectedTab = 0
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedTab = 0
+                    }
                 }
                 TabTextButton(title: "Actions", isSelected: selectedTab == 1) {
-                    selectedTab = 1
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedTab = 1
+                    }
                 }
                 TabTextButton(title: "Templates", isSelected: selectedTab == 2) {
-                    selectedTab = 2
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedTab = 2
+                    }
                 }
                 TabTextButton(title: "Plugins", isSelected: selectedTab == 3) {
-                    selectedTab = 3
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedTab = 3
+                    }
                 }
                 TabTextButton(title: "About", isSelected: selectedTab == 4) {
-                    selectedTab = 4
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedTab = 4
+                    }
                 }
             }
             .padding(.vertical, 12)
 
             Divider()
 
-            // Tab Content
-            switch selectedTab {
-            case 0:
-                GeneralSettingsView()
-            case 1:
-                ActionsSettingsView(selectedAction: $selectedAction)
-            case 2:
-                TemplatesView(onNavigateToActions: { action in
-                    selectedAction = action
-                    selectedTab = 1
-                })
-            case 3:
-                PluginsMarketplaceView()
-            case 4:
-                AboutView()
-            default:
-                EmptyView()
+            // Tab Content with animation
+            Group {
+                switch selectedTab {
+                case 0:
+                    GeneralSettingsView()
+                case 1:
+                    ActionsSettingsView(selectedAction: $selectedAction)
+                case 2:
+                    TemplatesView(onNavigateToActions: { action in
+                        selectedAction = action
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            selectedTab = 1
+                        }
+                    })
+                case 3:
+                    PluginsMarketplaceView()
+                case 4:
+                    AboutView()
+                default:
+                    EmptyView()
+                }
             }
+            .id(selectedTab)
+            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            .animation(.easeInOut(duration: 0.2), value: selectedTab)
         }
         .frame(width: 700, height: 540)
     }
@@ -101,106 +118,296 @@ struct TabTextButton: View {
 
 // MARK: - General Settings
 
+// MARK: - App Theme
+
+enum AppTheme: String, CaseIterable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+
+    var icon: String {
+        switch self {
+        case .system: return "circle.lefthalf.filled"
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.fill"
+        }
+    }
+}
+
 struct GeneralSettingsView: View {
     @StateObject private var store = ActionsStore.shared
     @State private var apiKeyInput: String = ""
     @State private var perplexityApiKeyInput: String = ""
-    @State private var launchAtLogin = false
     @State private var selectedProvider: AIProvider = .openai
+    @State private var selectedTheme: AppTheme = .system
+    @Environment(\.colorScheme) var colorScheme
+
+    // App accent blue color
+    private var appBlue: Color {
+        Color(red: 0.0, green: 0.584, blue: 1.0)
+    }
 
     var body: some View {
-        Form {
-            Section {
-                Picker("AI Provider", selection: $selectedProvider) {
-                    ForEach(AIProvider.allCases, id: \.self) { provider in
-                        Text(provider.rawValue).tag(provider)
-                    }
-                }
-                .pickerStyle(.menu)
-                .onChange(of: selectedProvider) { _, newValue in
-                    store.saveProvider(newValue)
-                }
-                .onAppear {
-                    selectedProvider = store.selectedProvider
-                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 32) {
+                // API Configuration Section
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("API Configuration")
+                        .font(.nunitoBold(size: 18))
+                        .foregroundColor(.primary)
 
-                SecureField("API Key", text: $apiKeyInput)
-                    .textFieldStyle(.roundedBorder)
-                    .onAppear {
-                        apiKeyInput = store.apiKey
-                    }
-                    .onChange(of: apiKeyInput) { _, newValue in
-                        store.saveApiKey(newValue)
-                    }
+                    HStack {
+                        HStack(spacing: 10) {
+                            Image(systemName: "cpu")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.purple)
+                            Text("AI Provider")
+                                .font(.nunitoRegularBold(size: 15))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(width: 160, alignment: .leading)
 
-                Text("Get your API key from \(selectedProvider.websiteURL)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } header: {
-                Text("API Configuration")
-                    .font(.nunitoBold(size: 13))
-            }
+                        Picker("", selection: $selectedProvider) {
+                            ForEach(AIProvider.allCases, id: \.self) { provider in
+                                Text(provider.rawValue).tag(provider)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .onChange(of: selectedProvider) { _, newValue in
+                            store.saveProvider(newValue)
+                        }
+                        .onAppear {
+                            selectedProvider = store.selectedProvider
+                        }
 
-            Section {
-                SecureField("Perplexity API Key", text: $perplexityApiKeyInput)
-                    .textFieldStyle(.roundedBorder)
-                    .onAppear {
-                        perplexityApiKeyInput = store.perplexityApiKey
-                    }
-                    .onChange(of: perplexityApiKeyInput) { _, newValue in
-                        store.savePerplexityApiKey(newValue)
+                        Spacer()
                     }
 
-                Text("Required for web search actions. Get your key from perplexity.ai/settings/api")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } header: {
-                Text("Web Search (Perplexity)")
-                    .font(.nunitoBold(size: 13))
-            }
+                    HStack {
+                        HStack(spacing: 10) {
+                            Image(systemName: "key.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.orange)
+                            Text("API Key")
+                                .font(.nunitoRegularBold(size: 15))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(width: 160, alignment: .leading)
 
-            Section {
-                HStack {
-                    Text("Global Shortcut")
-                        .font(.nunitoBold(size: 14))
-                    Spacer()
-                    Text("⌘ + ⇧ + T")
+                        SecureField("Enter your API key", text: $apiKeyInput)
+                            .textFieldStyle(.plain)
+                            .font(.nunitoRegularBold(size: 13))
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
+                            .onAppear {
+                                apiKeyInput = store.apiKey
+                            }
+                            .onChange(of: apiKeyInput) { _, newValue in
+                                store.saveApiKey(newValue)
+                            }
+                    }
+
+                    Text("Get your API key from \(selectedProvider.websiteURL)")
+                        .font(.nunitoRegularBold(size: 12))
                         .foregroundColor(.secondary)
+                        .padding(.leading, 160)
+                }
+
+                Divider()
+
+                // Web Search Section
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Web Search (Perplexity)")
+                        .font(.nunitoBold(size: 18))
+                        .foregroundColor(.primary)
+
+                    HStack {
+                        HStack(spacing: 10) {
+                            Image(systemName: "key.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.cyan)
+                            Text("API Key")
+                                .font(.nunitoRegularBold(size: 15))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(width: 160, alignment: .leading)
+
+                        SecureField("Enter your Perplexity API key", text: $perplexityApiKeyInput)
+                            .textFieldStyle(.plain)
+                            .font(.nunitoRegularBold(size: 13))
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
+                            .onAppear {
+                                perplexityApiKeyInput = store.perplexityApiKey
+                            }
+                            .onChange(of: perplexityApiKeyInput) { _, newValue in
+                                store.savePerplexityApiKey(newValue)
+                            }
+                    }
+
+                    Text("Required for web search actions. Get your key from perplexity.ai/settings/api")
+                        .font(.nunitoRegularBold(size: 12))
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 160)
+                }
+
+                Divider()
+
+                // Preferences Section
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Preferences")
+                        .font(.nunitoBold(size: 18))
+                        .foregroundColor(.primary)
+
+                    HStack {
+                        HStack(spacing: 10) {
+                            Image(systemName: "keyboard.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.pink)
+                            Text("Global Shortcut")
+                                .font(.nunitoRegularBold(size: 15))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        HStack(spacing: 6) {
+                            Settings3DKey(text: "⌘")
+                            Settings3DKey(text: "⇧")
+                            Settings3DKey(text: "T")
+                        }
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-
-                Toggle("Launch at Login", isOn: $launchAtLogin)
-            } header: {
-                Text("Preferences")
-                    .font(.nunitoBold(size: 13))
-            }
-
-            Section {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Accessibility Permission")
-                            .font(.nunitoBold(size: 14))
-                        Text("Required for global keyboard shortcuts to work")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.gray.opacity(0.08))
+                        )
                     }
 
-                    Spacer()
-
-                    Button("Open Settings") {
-                        openAccessibilitySettings()
+                    HStack {
+                        HStack(spacing: 10) {
+                            Image(systemName: "paintbrush.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.indigo)
+                            Text("Appearance")
+                                .font(.nunitoRegularBold(size: 15))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        HStack(spacing: 0) {
+                            ForEach(AppTheme.allCases, id: \.self) { theme in
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        selectedTheme = theme
+                                        applyTheme(theme)
+                                    }
+                                }) {
+                                    HStack(spacing: 5) {
+                                        Image(systemName: theme.icon)
+                                            .font(.system(size: 12))
+                                        Text(theme.rawValue)
+                                            .font(.nunitoRegularBold(size: 12))
+                                    }
+                                    .foregroundColor(selectedTheme == theme ? .white : .secondary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(selectedTheme == theme ? appBlue : Color.clear)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.gray.opacity(0.1))
+                        )
                     }
                 }
-            } header: {
-                Text("Permissions")
-                    .font(.nunitoBold(size: 13))
+
+                Divider()
+
+                // Permissions Section
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Permissions")
+                        .font(.nunitoBold(size: 18))
+                        .foregroundColor(.primary)
+
+                    HStack {
+                        HStack(spacing: 10) {
+                            Image(systemName: "hand.raised.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.green)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Accessibility Permission")
+                                    .font(.nunitoRegularBold(size: 15))
+                                    .foregroundColor(.secondary)
+                                Text("Required for global keyboard shortcuts to work")
+                                    .font(.nunitoRegularBold(size: 12))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                            }
+                        }
+
+                        Spacer()
+
+                        Button(action: {
+                            openAccessibilitySettings()
+                        }) {
+                            Text("Open Settings")
+                                .font(.nunitoRegularBold(size: 13))
+                                .foregroundColor(appBlue)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(appBlue.opacity(0.15))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Spacer()
             }
+            .padding(30)
         }
-        .formStyle(.grouped)
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.windowBackgroundColor))
+        .onAppear {
+            loadSavedTheme()
+        }
+    }
+
+    private func applyTheme(_ theme: AppTheme) {
+        let appearance: NSAppearance?
+        switch theme {
+        case .system:
+            appearance = nil
+        case .light:
+            appearance = NSAppearance(named: .aqua)
+        case .dark:
+            appearance = NSAppearance(named: .darkAqua)
+        }
+
+        NSApp.appearance = appearance
+
+        // Save preference
+        UserDefaults.standard.set(theme.rawValue, forKey: "appTheme")
+    }
+
+    private func loadSavedTheme() {
+        if let savedTheme = UserDefaults.standard.string(forKey: "appTheme"),
+           let theme = AppTheme(rawValue: savedTheme) {
+            selectedTheme = theme
+            applyTheme(theme)
+        }
     }
 }
 
@@ -1846,6 +2053,38 @@ struct Keyboard3DKey: View {
                 .foregroundColor(.black)
         }
         .frame(width: 36, height: 39)
+    }
+}
+
+// MARK: - Settings 3D Key (smaller for settings view)
+
+struct Settings3DKey: View {
+    @Environment(\.colorScheme) var colorScheme
+    let text: String
+
+    var body: some View {
+        ZStack {
+            // Bottom layer (3D effect) - more pronounced in dark mode
+            RoundedRectangle(cornerRadius: 6)
+                .fill(colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.7))
+                .frame(width: 30, height: 30)
+                .offset(y: colorScheme == .dark ? 3 : 2)
+
+            // Top layer
+            RoundedRectangle(cornerRadius: 6)
+                .fill(colorScheme == .dark ? Color(white: 0.3) : Color(white: 0.95))
+                .frame(width: 30, height: 30)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(colorScheme == .dark ? Color(white: 0.4) : Color.gray.opacity(0.3), lineWidth: 1)
+                )
+                .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.clear, radius: 2, x: 0, y: 1)
+
+            Text(text)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(colorScheme == .dark ? .white : .black)
+        }
+        .frame(width: 30, height: colorScheme == .dark ? 33 : 32)
     }
 }
 
