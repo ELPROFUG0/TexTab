@@ -1145,26 +1145,8 @@ struct PopoverView: View {
         // Copy the result to clipboard
         copyToClipboard(text)
 
-        // Close the popup first
-        onClose()
-
-        // Small delay to let the popup close and focus return to original app
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            // Simulate Cmd+V to paste
-            let source = CGEventSource(stateID: .combinedSessionState)
-
-            // Key down V with Cmd
-            let vDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // V key
-            vDown?.flags = .maskCommand
-
-            // Key up V
-            let vUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
-            vUp?.flags = .maskCommand
-
-            // Post events
-            vDown?.post(tap: .cgSessionEventTap)
-            vUp?.post(tap: .cgSessionEventTap)
-        }
+        // Use the global app delegate to close popup, restore focus, and paste
+        globalAppDelegate?.performPasteInPreviousApp()
     }
 
     func copyImageToClipboard(_ image: NSImage) {

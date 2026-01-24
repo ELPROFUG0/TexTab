@@ -54,6 +54,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var actionHotKeyRefs: [EventHotKeyRef?] = []
     var pendingAction: Action?
     var cancellables = Set<AnyCancellable>()
+    var previousActiveApp: NSRunningApplication?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         globalAppDelegate = self
@@ -356,6 +357,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showPopoverWithAction() {
+        // Guardar la app activa antes de mostrar el popup
+        previousActiveApp = NSWorkspace.shared.frontmostApplication
+
         // Capturar texto seleccionado antes de mostrar el popup
         captureSelectedText()
 
@@ -394,6 +398,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func showPopover() {
+        // Guardar la app activa antes de mostrar el popup
+        previousActiveApp = NSWorkspace.shared.frontmostApplication
+
         // Capturar texto seleccionado antes de mostrar el popup
         captureSelectedText()
 
@@ -458,6 +465,57 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
+        }
+    }
+
+    func hidePopoverAndRestoreFocus() {
+        popoverWindow?.orderOut(nil)
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
+
+        // Restaurar el foco a la app anterior
+        if let previousApp = previousActiveApp {
+            previousApp.activate(options: .activateIgnoringOtherApps)
+        }
+    }
+
+    func performPasteInPreviousApp() {
+        // Cerrar el popup
+        popoverWindow?.orderOut(nil)
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
+
+        // Restaurar el foco a la app anterior y pegar
+        if let previousApp = previousActiveApp {
+            previousApp.activate(options: .activateIgnoringOtherApps)
+
+            // Esperar a que la app anterior tenga el foco
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                // Verificar permisos de accesibilidad
+                guard AXIsProcessTrusted() else {
+                    print("Accessibility permissions not granted")
+                    return
+                }
+
+                // Simular Cmd+V para pegar
+                let source = CGEventSource(stateID: .hidSystemState)
+
+                if let vDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) {
+                    vDown.flags = .maskCommand
+                    vDown.post(tap: .cghidEventTap)
+                }
+
+                usleep(10000) // 10ms
+
+                if let vUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) {
+                    vUp.flags = .maskCommand
+                    vUp.post(tap: .cghidEventTap)
+                }
+            }
         }
     }
 
