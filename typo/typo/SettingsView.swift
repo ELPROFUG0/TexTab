@@ -141,6 +141,7 @@ struct GeneralSettingsView: View {
     @State private var selectedProvider: AIProvider = .openai
     @State private var selectedModelId: String = ""
     @State private var selectedTheme: AppTheme = .system
+    @State private var showModelTooltip: Bool = false
     @Environment(\.colorScheme) var colorScheme
 
     private var availableModels: [AIModel] {
@@ -200,6 +201,14 @@ struct GeneralSettingsView: View {
                         .labelsHidden()
                         .onChange(of: selectedModelId) { _, newValue in
                             store.saveModel(newValue)
+                        }
+                        .popover(isPresented: $showModelTooltip, arrowEdge: .bottom) {
+                            if let model = availableModels.first(where: { $0.id == selectedModelId }) {
+                                ModelSpecsTooltip(model: model)
+                            }
+                        }
+                        .onHover { hovering in
+                            showModelTooltip = hovering
                         }
 
                         Spacer()
@@ -425,6 +434,77 @@ struct GeneralSettingsView: View {
            let theme = AppTheme(rawValue: savedTheme) {
             selectedTheme = theme
             applyTheme(theme)
+        }
+    }
+}
+
+// MARK: - Model Specs Tooltip
+
+struct ModelSpecsTooltip: View {
+    let model: AIModel
+    @Environment(\.colorScheme) var colorScheme
+
+    private var appBlue: Color {
+        Color(red: 0.0, green: 0.584, blue: 1.0)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Model name with icon
+            HStack(spacing: 8) {
+                Image(systemName: "sparkle")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.orange)
+                Text(model.name)
+                    .font(.nunitoBold(size: 15))
+                    .foregroundColor(.primary)
+            }
+
+            // Description
+            Text(model.specs.description)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Stats
+            VStack(alignment: .leading, spacing: 8) {
+                SpecsBar(label: "Speed", value: model.specs.speed)
+                SpecsBar(label: "Intelligence", value: model.specs.intelligence)
+                SpecsBar(label: "Token usage", value: model.specs.tokenUsage)
+            }
+        }
+        .padding(14)
+        .frame(width: 220)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(colorScheme == .dark ? Color(white: 0.15) : Color.white)
+                .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 4)
+        )
+    }
+}
+
+struct SpecsBar: View {
+    let label: String
+    let value: Int // 1-5
+
+    private var appBlue: Color {
+        Color(red: 0.0, green: 0.584, blue: 1.0)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .frame(width: 75, alignment: .leading)
+
+            HStack(spacing: 4) {
+                ForEach(0..<5, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(index < value ? appBlue : Color.gray.opacity(0.3))
+                        .frame(width: 18, height: 6)
+                }
+            }
         }
     }
 }
