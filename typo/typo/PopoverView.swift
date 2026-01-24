@@ -7,6 +7,20 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
+// MARK: - Pointer Cursor Modifier
+
+extension View {
+    func pointerCursor() -> some View {
+        self.onHover { hovering in
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+    }
+}
+
 // MARK: - Web Search Detection
 
 // Detect if prompt requires web search based on keywords
@@ -143,6 +157,9 @@ struct PopoverView: View {
                             .onHover { hovering in
                                 if hovering {
                                     selectedIndex = index
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
                                 }
                             }
                         }
@@ -156,6 +173,9 @@ struct PopoverView: View {
                             .onHover { hovering in
                                 if hovering {
                                     selectedIndex = filteredActions.count
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
                                 }
                             }
                     }
@@ -231,10 +251,10 @@ struct PopoverView: View {
             HStack {
                 Text(action.name)
                     .font(.nunitoRegularBold(size: 13))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(appBlue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.1))
+                    .background(appBlue.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 Spacer()
@@ -249,6 +269,7 @@ struct PopoverView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .pointerCursor()
             }
             .padding(16)
 
@@ -335,6 +356,11 @@ struct PopoverView: View {
         }
     }
 
+    // App accent blue color
+    private var appBlue: Color {
+        Color(red: 0.0, green: 0.584, blue: 1.0)
+    }
+
     // MARK: - Result View (Action Popup)
 
     func resultView(result: String, action: Action) -> some View {
@@ -343,10 +369,10 @@ struct PopoverView: View {
             HStack {
                 Text(action.name)
                     .font(.nunitoRegularBold(size: 13))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(appBlue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.1))
+                    .background(appBlue.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 if promptRequiresWebSearch(action.prompt) {
@@ -375,6 +401,7 @@ struct PopoverView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .pointerCursor()
             }
             .padding(16)
 
@@ -411,17 +438,57 @@ struct PopoverView: View {
 
                 Spacer()
 
-                HStack(spacing: 8) {
-                    Button("Copy") {
+                HStack(spacing: 10) {
+                    // Copy button - secondary style
+                    Button(action: {
                         copyToClipboard(result)
+                    }) {
+                        Text("Copy")
+                            .font(.nunitoRegularBold(size: 13))
+                            .foregroundColor(appBlue)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                ZStack {
+                                    // Bottom layer (3D effect)
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(appBlue.opacity(0.3))
+                                        .offset(y: 2)
+
+                                    // Top layer
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(appBlue.opacity(0.15))
+                                }
+                            )
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
+                    .pointerCursor()
 
                     if !promptRequiresWebSearch(action.prompt) && !action.isPlugin {
-                        Button("Replace") {
+                        // Replace button - primary style
+                        Button(action: {
                             replaceOriginalText(with: result)
+                        }) {
+                            Text("Replace")
+                                .font(.nunitoRegularBold(size: 13))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    ZStack {
+                                        // Bottom layer (3D effect) - darker blue
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(Color(red: 0.0, green: 0.45, blue: 0.8))
+                                            .offset(y: 2)
+
+                                        // Top layer - #0095ff
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(appBlue)
+                                    }
+                                )
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.plain)
+                        .pointerCursor()
                     }
                 }
             }
@@ -448,10 +515,10 @@ struct PopoverView: View {
             HStack {
                 Text(action.name)
                     .font(.nunitoRegularBold(size: 13))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(appBlue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.1))
+                    .background(appBlue.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 Image(systemName: "puzzlepiece.extension")
@@ -472,6 +539,7 @@ struct PopoverView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .pointerCursor()
             }
             .padding(16)
 
@@ -524,7 +592,8 @@ struct PopoverView: View {
 
                 Spacer()
 
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    // Copy button - secondary style
                     Button(action: {
                         copyImageToClipboard(image)
                     }) {
@@ -532,10 +601,25 @@ struct PopoverView: View {
                             Image(systemName: "doc.on.doc")
                                 .font(.system(size: 11))
                             Text("Copy")
+                                .font(.nunitoRegularBold(size: 13))
                         }
+                        .foregroundColor(appBlue)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(appBlue.opacity(0.3))
+                                    .offset(y: 2)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(appBlue.opacity(0.15))
+                            }
+                        )
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
+                    .pointerCursor()
 
+                    // Save button - primary style
                     Button(action: {
                         saveImage(image)
                     }) {
@@ -543,9 +627,23 @@ struct PopoverView: View {
                             Image(systemName: "square.and.arrow.down")
                                 .font(.system(size: 11))
                             Text("Save")
+                                .font(.nunitoRegularBold(size: 13))
                         }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(red: 0.0, green: 0.45, blue: 0.8))
+                                    .offset(y: 2)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(appBlue)
+                            }
+                        )
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.plain)
+                    .pointerCursor()
                 }
             }
             .padding(.horizontal, 16)
@@ -571,10 +669,10 @@ struct PopoverView: View {
             HStack {
                 Text(action.name)
                     .font(.nunitoRegularBold(size: 13))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(appBlue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.1))
+                    .background(appBlue.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 Image(systemName: "puzzlepiece.extension")
@@ -597,6 +695,7 @@ struct PopoverView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .pointerCursor()
             }
             .padding(16)
 
@@ -667,15 +766,23 @@ struct PopoverView: View {
                                     Image(systemName: "doc.on.clipboard")
                                         .font(.system(size: 12))
                                     Text("Paste Image")
-                                        .font(.system(size: 13, weight: .medium))
+                                        .font(.nunitoRegularBold(size: 13))
                                 }
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(Color.accentColor)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .background(
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(Color(red: 0.0, green: 0.45, blue: 0.8))
+                                            .offset(y: 2)
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(appBlue)
+                                    }
+                                )
                             }
                             .buttonStyle(.plain)
+                            .pointerCursor()
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 30)
@@ -698,9 +805,10 @@ struct PopoverView: View {
                                         .foregroundColor(selectedImageFormat == format ? .white : .primary)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 10)
-                                        .background(selectedImageFormat == format ? Color.accentColor : Color.gray.opacity(0.1))
+                                        .background(selectedImageFormat == format ? appBlue : Color.gray.opacity(0.1))
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
+                                .pointerCursor()
                                 .buttonStyle(.plain)
                             }
                         }
@@ -721,7 +829,7 @@ struct PopoverView: View {
                             }
 
                             Slider(value: $jpegQuality, in: 0.1...1.0, step: 0.1)
-                                .tint(.accentColor)
+                                .tint(appBlue)
                         }
                         .padding(.horizontal, 20)
                     }
@@ -763,8 +871,8 @@ struct PopoverView: View {
 
                 Spacer()
 
-                HStack(spacing: 8) {
-                    // Refresh from clipboard
+                HStack(spacing: 10) {
+                    // Refresh from clipboard - secondary style
                     Button(action: {
                         if let image = PluginProcessor.shared.getImageFromClipboard() {
                             clipboardImage = image
@@ -773,11 +881,23 @@ struct PopoverView: View {
                     }) {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 12))
+                            .foregroundColor(appBlue)
+                            .padding(10)
+                            .background(
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(appBlue.opacity(0.3))
+                                        .offset(y: 2)
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(appBlue.opacity(0.15))
+                                }
+                            )
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
+                    .pointerCursor()
                     .help("Refresh from clipboard")
 
-                    // Convert button
+                    // Convert button - primary style
                     Button(action: {
                         convertAndSaveImage()
                     }) {
@@ -785,9 +905,23 @@ struct PopoverView: View {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.system(size: 11))
                             Text("Convert & Save")
+                                .font(.nunitoRegularBold(size: 13))
                         }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(clipboardImage == nil ? Color.gray.opacity(0.4) : Color(red: 0.0, green: 0.45, blue: 0.8))
+                                    .offset(y: 2)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(clipboardImage == nil ? Color.gray.opacity(0.3) : appBlue)
+                            }
+                        )
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.plain)
+                    .pointerCursor()
                     .disabled(clipboardImage == nil)
                 }
             }
@@ -1581,6 +1715,11 @@ struct ColorPickerResultView: View {
     let action: Action
     var onClose: () -> Void
 
+    // App accent blue color
+    private var appBlue: Color {
+        Color(red: 0.0, green: 0.584, blue: 1.0)
+    }
+
     var extractedColor: NSColor? {
         // Parse HEX from result
         let lines = result.components(separatedBy: "\n")
@@ -1614,10 +1753,10 @@ struct ColorPickerResultView: View {
             HStack {
                 Text(action.name)
                     .font(.nunitoRegularBold(size: 13))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(appBlue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.1))
+                    .background(appBlue.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 Image(systemName: "puzzlepiece.extension")
@@ -1632,6 +1771,7 @@ struct ColorPickerResultView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .pointerCursor()
             }
             .padding(16)
 
@@ -1675,21 +1815,54 @@ struct ColorPickerResultView: View {
 
                 Spacer()
 
-                HStack(spacing: 8) {
-                    Button("Copy All") {
+                HStack(spacing: 10) {
+                    // Copy All button - secondary style
+                    Button(action: {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(result, forType: .string)
+                    }) {
+                        Text("Copy All")
+                            .font(.nunitoRegularBold(size: 13))
+                            .foregroundColor(appBlue)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(appBlue.opacity(0.3))
+                                        .offset(y: 2)
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(appBlue.opacity(0.15))
+                                }
+                            )
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
+                    .pointerCursor()
 
-                    // Copy just HEX
+                    // Copy HEX button - primary style
                     if let hexLine = result.components(separatedBy: "\n").first(where: { $0.hasPrefix("HEX:") }) {
                         let hex = String(hexLine.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-                        Button("Copy HEX") {
+                        Button(action: {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(hex, forType: .string)
+                        }) {
+                            Text("Copy HEX")
+                                .font(.nunitoRegularBold(size: 13))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(Color(red: 0.0, green: 0.45, blue: 0.8))
+                                            .offset(y: 2)
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(appBlue)
+                                    }
+                                )
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.plain)
+                        .pointerCursor()
                     }
                 }
             }

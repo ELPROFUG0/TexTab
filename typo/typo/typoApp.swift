@@ -25,10 +25,16 @@ struct typoApp: App {
 // Puntero global para el callback de Carbon
 var globalAppDelegate: AppDelegate?
 
-// Custom NSPanel that can become key window
+// Custom NSPanel that can become key window and is draggable
 class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    override init(contentRect: NSRect, styleMask style: NSWindow.StyleMask, backing backingStoreType: NSWindow.BackingStoreType, defer flag: Bool) {
+        super.init(contentRect: contentRect, styleMask: style, backing: backingStoreType, defer: flag)
+        // Allow the panel to be moved by dragging its background
+        self.isMovableByWindowBackground = true
+    }
 }
 
 // Manager para compartir el texto capturado
