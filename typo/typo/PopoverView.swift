@@ -7,6 +7,23 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
+// MARK: - Web Search Detection
+
+// Detect if prompt requires web search based on keywords
+func promptRequiresWebSearch(_ prompt: String) -> Bool {
+    let lowercased = prompt.lowercased()
+    let webSearchKeywords = [
+        "search", "buscar", "busca", "google", "web",
+        "internet", "online", "find online", "look up",
+        "latest", "current", "recent", "today", "news",
+        "actualidad", "noticias", "último", "última",
+        "what is", "who is", "where is", "when is",
+        "qué es", "quién es", "dónde", "cuándo"
+    ]
+
+    return webSearchKeywords.contains { lowercased.contains($0) }
+}
+
 struct PopoverView: View {
     @StateObject private var store = ActionsStore.shared
     @StateObject private var textManager = CapturedTextManager.shared
@@ -332,7 +349,7 @@ struct PopoverView: View {
                     .background(Color.accentColor.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
-                if action.isWebSearch {
+                if promptRequiresWebSearch(action.prompt) {
                     Image(systemName: "globe")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
@@ -365,7 +382,7 @@ struct PopoverView: View {
 
             // Result content - expands to fill available space
             ScrollView {
-                if action.isWebSearch {
+                if promptRequiresWebSearch(action.prompt) {
                     // Render markdown for web search results
                     MarkdownTextView(text: result)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -400,7 +417,7 @@ struct PopoverView: View {
                     }
                     .buttonStyle(.bordered)
 
-                    if !action.isWebSearch && !action.isPlugin {
+                    if !promptRequiresWebSearch(action.prompt) && !action.isPlugin {
                         Button("Replace") {
                             replaceOriginalText(with: result)
                         }
@@ -952,7 +969,10 @@ struct PopoverView: View {
         Task {
             do {
                 let result: String
-                if action.isWebSearch {
+                // Auto-detect if prompt requires web search
+                let requiresWebSearch = promptRequiresWebSearch(action.prompt)
+
+                if requiresWebSearch {
                     // Use Perplexity for web search
                     result = try await AIService.shared.webSearch(
                         prompt: action.prompt,
@@ -1100,7 +1120,7 @@ struct ActionRow: View {
                 .font(.nunitoRegularBold(size: 14))
                 .foregroundColor(Color.gray)
 
-            if action.isWebSearch {
+            if promptRequiresWebSearch(action.prompt) {
                 Image(systemName: "globe")
                     .font(.system(size: 10))
                     .foregroundColor(.accentColor)

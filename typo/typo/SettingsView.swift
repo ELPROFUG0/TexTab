@@ -559,39 +559,6 @@ struct ActionEditorView: View {
                                 .stroke(Color.gray.opacity(0.15), lineWidth: 1)
                         )
 
-                        // Web Search Toggle (only for AI actions)
-                        HStack {
-                            Toggle(isOn: Binding(
-                                get: { action.actionType == .webSearch },
-                                set: { newValue in
-                                    action.actionType = newValue ? .webSearch : .ai
-                                    hasUnsavedChanges = true
-                                }
-                            )) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "globe")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(action.actionType == .webSearch ? .accentColor : textGrayColor)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Web Search")
-                                            .font(.nunitoRegularBold(size: 14))
-                                            .foregroundColor(textGrayColor)
-                                        Text("Uses Perplexity to search the web for up-to-date information")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                            }
-                            .toggleStyle(.switch)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        .background(inputBackgroundColor)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.gray.opacity(0.15), lineWidth: 1)
-                        )
                     }
 
                     Spacer()
