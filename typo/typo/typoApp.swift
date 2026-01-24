@@ -105,6 +105,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.isMovableByWindowBackground = true
         window.contentView = NSHostingView(rootView: onboardingView)
         window.center()
+
+        // Hide minimize and zoom buttons, keep only close button
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
         window.isReleasedWhenClosed = false
 
         onboardingWindow = window

@@ -418,14 +418,14 @@ struct PermissionsStep: View {
                             .frame(height: 48)
                             .background(
                                 ZStack {
-                                    // Bottom shadow layer (3D effect)
+                                    // Bottom shadow layer (3D effect) - lighter color
                                     RoundedRectangle(cornerRadius: 14)
-                                        .fill(hasAccessibilityPermission ? accentGreenDark : accentYellowDark)
-                                        .offset(y: 4)
+                                        .fill(hasAccessibilityPermission ? Color(hex: "58d965") : Color(hex: "FFD54F"))
+                                        .offset(y: 5)
 
-                                    // Main button
+                                    // Main button - original color
                                     RoundedRectangle(cornerRadius: 14)
-                                        .fill(hasAccessibilityPermission ? accentGreen : accentYellow)
+                                        .fill(hasAccessibilityPermission ? Color(hex: "00ce44") : accentYellow)
                                 }
                             )
                     }
@@ -633,7 +633,7 @@ struct FloatingIcon: View {
     }
 }
 
-// Smooth wavy edge shape with rounded zigzag
+// Ticket perforation edge - subtle semicircles biting into the colored side
 struct WavyEdge: View {
     let isGreen: Bool
 
@@ -642,32 +642,35 @@ struct WavyEdge: View {
             Path { path in
                 let width = geo.size.width
                 let height = geo.size.height
-                let waveDepth: CGFloat = 10
-                let waveHeight: CGFloat = 14
+                let notchRadius: CGFloat = 4
+                let notchSpacing: CGFloat = 20
 
                 // Start from top-right corner
                 path.move(to: CGPoint(x: width, y: 0))
                 path.addLine(to: CGPoint(x: width, y: height))
-                path.addLine(to: CGPoint(x: waveDepth, y: height))
+                path.addLine(to: CGPoint(x: 0, y: height))
 
-                // Zigzag from bottom to top
-                var y: CGFloat = height
-                var toLeft = true
+                // Create semicircular notches from bottom to top (biting into the right/colored side)
+                var y: CGFloat = height - notchSpacing / 2
 
                 while y > 0 {
-                    let endY = max(y - waveHeight, 0)
-                    let endX: CGFloat = toLeft ? 0 : waveDepth
+                    // Line up to notch
+                    path.addLine(to: CGPoint(x: 0, y: y + notchRadius))
 
-                    // Simple rounded corner to next point
-                    path.addQuadCurve(
-                        to: CGPoint(x: endX, y: endY),
-                        control: CGPoint(x: toLeft ? 0 : waveDepth, y: y - waveHeight / 2)
+                    // Semicircle notch biting to the right (into the colored area)
+                    path.addArc(
+                        center: CGPoint(x: 0, y: y),
+                        radius: notchRadius,
+                        startAngle: .degrees(90),
+                        endAngle: .degrees(-90),
+                        clockwise: true
                     )
 
-                    y = endY
-                    toLeft.toggle()
+                    y -= notchSpacing
                 }
 
+                // Line to top
+                path.addLine(to: CGPoint(x: 0, y: 0))
                 path.addLine(to: CGPoint(x: width, y: 0))
                 path.closeSubpath()
             }
@@ -844,8 +847,8 @@ struct ActivationStep: View {
                         .frame(height: 30)
 
                     Text("Enter your license key below.")
-                        .font(.system(size: 13))
-                        .foregroundColor(Color(hex: "999999"))
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color(hex: "333333"))
 
                     Spacer()
                         .frame(height: 14)
@@ -878,14 +881,14 @@ struct ActivationStep: View {
                         .frame(height: 48)
                         .background(
                             ZStack {
-                                // Bottom shadow layer (3D effect)
+                                // Bottom shadow layer (3D effect) - lighter color
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(licenseInput.filter({ $0 != "-" }).count >= 32 ? Color(hex: "E65100") : Color(hex: "cccccc"))
-                                    .offset(y: 4)
+                                    .fill(licenseInput.filter({ $0 != "-" }).count >= 32 ? Color(hex: "58d965") : Color(hex: "e0e0e0"))
+                                    .offset(y: 5)
 
-                                // Main button
+                                // Main button - original color
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(licenseInput.filter({ $0 != "-" }).count >= 32 ? Color(hex: "FF9500") : Color(hex: "e0e0e0"))
+                                    .fill(licenseInput.filter({ $0 != "-" }).count >= 32 ? Color(hex: "00ce44") : Color(hex: "cccccc"))
                             }
                         )
                     }
@@ -944,39 +947,42 @@ struct ActivationStep: View {
     }
 }
 
-// Smooth wavy edge for blue section with rounded zigzag
+// Ticket perforation edge for blue section - subtle semicircles
 struct WavyEdgeBlue: View {
     var body: some View {
         GeometryReader { geo in
             Path { path in
                 let width = geo.size.width
                 let height = geo.size.height
-                let waveDepth: CGFloat = 10
-                let waveHeight: CGFloat = 14
+                let notchRadius: CGFloat = 4
+                let notchSpacing: CGFloat = 20
 
                 // Start from top-right corner
                 path.move(to: CGPoint(x: width, y: 0))
                 path.addLine(to: CGPoint(x: width, y: height))
-                path.addLine(to: CGPoint(x: waveDepth, y: height))
+                path.addLine(to: CGPoint(x: 0, y: height))
 
-                // Zigzag from bottom to top
-                var y: CGFloat = height
-                var toLeft = true
+                // Create semicircular notches from bottom to top (biting into the right/colored side)
+                var y: CGFloat = height - notchSpacing / 2
 
                 while y > 0 {
-                    let endY = max(y - waveHeight, 0)
-                    let endX: CGFloat = toLeft ? 0 : waveDepth
+                    // Line up to notch
+                    path.addLine(to: CGPoint(x: 0, y: y + notchRadius))
 
-                    // Simple rounded corner to next point
-                    path.addQuadCurve(
-                        to: CGPoint(x: endX, y: endY),
-                        control: CGPoint(x: toLeft ? 0 : waveDepth, y: y - waveHeight / 2)
+                    // Semicircle notch biting to the right (into the colored area)
+                    path.addArc(
+                        center: CGPoint(x: 0, y: y),
+                        radius: notchRadius,
+                        startAngle: .degrees(90),
+                        endAngle: .degrees(-90),
+                        clockwise: true
                     )
 
-                    y = endY
-                    toLeft.toggle()
+                    y -= notchSpacing
                 }
 
+                // Line to top
+                path.addLine(to: CGPoint(x: 0, y: 0))
                 path.addLine(to: CGPoint(x: width, y: 0))
                 path.closeSubpath()
             }
