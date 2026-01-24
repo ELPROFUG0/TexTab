@@ -86,7 +86,7 @@ struct OnboardingView: View {
 
     var onComplete: () -> Void
 
-    private let totalSteps = 4
+    private let totalSteps = 5
 
     // Brand colors - matching TypoTap style
     private let brandBlue = Color(hex: "2196F3")
@@ -104,6 +104,8 @@ struct OnboardingView: View {
             case 2:
                 PermissionsStep(onNext: nextStep, onBack: previousStep)
             case 3:
+                ShortcutStep(onNext: nextStep, onBack: previousStep)
+            case 4:
                 ActivationStep(
                     licenseInput: $licenseInput,
                     isValidating: $isValidating,
@@ -716,6 +718,359 @@ struct StepRow: View {
                         .stroke(Color(hex: "e8e8e8"), lineWidth: 1)
                 )
         )
+    }
+}
+
+// MARK: - Step 4: Shortcut Configuration
+
+struct ShortcutStep: View {
+    var onNext: () -> Void
+    var onBack: () -> Void
+
+    @State private var recordedKeys: [String] = []
+    @State private var isRecording = false
+    @State private var savedShortcutKeys: [String] = ["\u{2325}", "D"] // Default: Option + D
+    @State private var eventMonitor: Any?
+
+    private let brandBlue = Color(hex: "2196F3")
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Left side - White form
+            ZStack(alignment: .trailing) {
+                Color.white
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Spacer()
+                        .frame(height: 40)
+
+                    Text("Shortcut")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(hex: "1a1a1a"))
+
+                    Spacer()
+                        .frame(height: 10)
+
+                    Text("Set your keyboard shortcut to\nsummon Typo from anywhere.")
+                        .font(.system(size: 14))
+                        .foregroundColor(Color(hex: "666666"))
+                        .lineSpacing(3)
+
+                    Spacer()
+                        .frame(height: 40)
+
+                    // Shortcut recorder with tooltip
+                    VStack(spacing: 0) {
+                        // Tooltip appears above when recording
+                        if isRecording {
+                            OnboardingShortcutTooltip(recordedKeys: recordedKeys)
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity),
+                                    removal: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity)
+                                ))
+                                .padding(.bottom, 8)
+                        }
+
+                        // Shortcut display box
+                        Button(action: {
+                            startRecording()
+                        }) {
+                            HStack(spacing: 8) {
+                                if savedShortcutKeys.isEmpty {
+                                    Text("Click to record shortcut...")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(Color(hex: "999999"))
+                                } else {
+                                    ForEach(savedShortcutKeys, id: \.self) { key in
+                                        OnboardingShortcutKey(text: key)
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color(hex: "f8f8f8"))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color(hex: "e0e0e0"), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isRecording)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: recordedKeys)
+
+                    Spacer()
+                        .frame(height: 16)
+
+                    Text("Click the box above to record a new\nshortcut. You can change this anytime in\nthe settings.")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "999999"))
+                        .lineSpacing(2)
+
+                    Spacer()
+
+                    // Next button
+                    Button(action: {
+                        saveShortcut()
+                        onNext()
+                    }) {
+                        Text("Next")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(
+                                ZStack {
+                                    // Bottom shadow layer (3D effect) - lighter color
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(Color(hex: "64B5F6"))
+                                        .offset(y: 5)
+
+                                    // Main button
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(brandBlue)
+                                }
+                            )
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+                        .frame(height: 30)
+                }
+                .padding(.horizontal, 32)
+                .padding(.trailing, 24)
+
+                // Wavy edge
+                WavyEdgeBlue()
+                    .frame(width: 22)
+                    .offset(x: 10)
+            }
+            .frame(width: 340)
+
+            // Right side - Blue with keyboard image
+            ZStack {
+                brandBlue
+
+                VStack {
+                    Spacer()
+
+                    // Keyboard image
+                    Image("keyboard")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 380)
+                        .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
+
+                    Spacer()
+                }
+                .padding(30)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            loadCurrentShortcut()
+        }
+        .onDisappear {
+            stopRecording()
+        }
+    }
+
+    private func loadCurrentShortcut() {
+        let savedKeys = UserDefaults.standard.stringArray(forKey: "typo_shortcut_keys") ?? ["\u{2325}", "D"]
+        savedShortcutKeys = savedKeys
+    }
+
+    private func saveShortcut() {
+        UserDefaults.standard.set(savedShortcutKeys, forKey: "typo_shortcut_keys")
+    }
+
+    private func startRecording() {
+        isRecording = true
+        recordedKeys = []
+
+        // Monitor for key press
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if self.isRecording {
+                let modifiers = event.modifierFlags
+
+                // Must have Command or Option
+                let hasCommand = modifiers.contains(.command)
+                let hasOption = modifiers.contains(.option)
+
+                if !hasCommand && !hasOption {
+                    // Ignore keys without Command or Option
+                    return event
+                }
+
+                var keys: [String] = []
+
+                // Add modifiers in order
+                if modifiers.contains(.control) { keys.append("^") }
+                if modifiers.contains(.option) { keys.append("\u{2325}") }
+                if modifiers.contains(.shift) { keys.append("\u{21E7}") }
+                if modifiers.contains(.command) { keys.append("\u{2318}") }
+
+                // Add the key
+                let key = event.charactersIgnoringModifiers?.uppercased() ?? ""
+                if !key.isEmpty && key.count == 1 {
+                    keys.append(key)
+
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        self.recordedKeys = keys
+                    }
+
+                    // Save and close after a short delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.savedShortcutKeys = keys
+                        withAnimation {
+                            self.isRecording = false
+                        }
+                        self.stopRecording()
+                    }
+                    return nil
+                }
+            }
+            return event
+        }
+    }
+
+    private func stopRecording() {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
+    }
+}
+
+// MARK: - Onboarding Shortcut Tooltip
+
+struct OnboardingShortcutTooltip: View {
+    let recordedKeys: [String]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Tooltip content
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("e.g.")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color(hex: "999999"))
+
+                    // Always show 3 key slots
+                    ForEach(0..<3, id: \.self) { index in
+                        if index < recordedKeys.count {
+                            OnboardingTooltipKey(text: recordedKeys[index])
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.5).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
+                                .id("key-\(index)-\(recordedKeys[index])")
+                        } else {
+                            OnboardingTooltipKey(text: "")
+                                .opacity(0.4)
+                        }
+                    }
+                }
+
+                Text("Recording...")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(hex: "999999"))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.12), radius: 12, x: 0, y: 4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(hex: "e0e0e0"), lineWidth: 1)
+            )
+
+            // Arrow pointing down
+            OnboardingTooltipArrow()
+                .fill(Color.white)
+                .frame(width: 16, height: 10)
+                .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 2)
+        }
+    }
+}
+
+// MARK: - Onboarding Tooltip Key
+
+struct OnboardingTooltipKey: View {
+    let text: String
+
+    var body: some View {
+        ZStack {
+            // Bottom layer (3D effect)
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color(hex: "d0d0d0"))
+                .frame(width: 28, height: 28)
+                .offset(y: 2)
+
+            // Top layer
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color(hex: "f5f5f5"))
+                .frame(width: 28, height: 28)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(hex: "e0e0e0"), lineWidth: 1)
+                )
+
+            Text(text)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(Color(hex: "333333"))
+        }
+        .frame(width: 28, height: 30)
+    }
+}
+
+// MARK: - Onboarding Tooltip Arrow
+
+struct OnboardingTooltipArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - Onboarding Shortcut Key Display
+
+struct OnboardingShortcutKey: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 15, weight: .medium, design: .rounded))
+            .foregroundColor(Color(hex: "333333"))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                ZStack {
+                    // 3D effect bottom
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color(hex: "d0d0d0"))
+                        .offset(y: 2)
+
+                    // Top
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.white)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color(hex: "e0e0e0"), lineWidth: 1)
+                        )
+                }
+            )
     }
 }
 
