@@ -52,16 +52,19 @@ class OnboardingManager: ObservableObject {
 
     func validateLicense(_ key: String) async -> Bool {
         // TODO: Implement actual license validation with your server
-        let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        // Remove dashes and whitespace, then uppercase
+        let cleanedKey = key.replacingOccurrences(of: "-", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
 
-        // Validate 32 alphanumeric characters (UUID format without dashes)
+        // Validate 32 alphanumeric characters
         let pattern = "^[A-Z0-9]{32}$"
         let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
-        let range = NSRange(trimmedKey.startIndex..., in: trimmedKey)
+        let range = NSRange(cleanedKey.startIndex..., in: cleanedKey)
 
-        if regex?.firstMatch(in: trimmedKey, options: [], range: range) != nil {
+        if regex?.firstMatch(in: cleanedKey, options: [], range: range) != nil {
             // Format with dashes for storage (8-4-4-4-12)
-            let formatted = "\(trimmedKey.prefix(8))-\(trimmedKey.dropFirst(8).prefix(4))-\(trimmedKey.dropFirst(12).prefix(4))-\(trimmedKey.dropFirst(16).prefix(4))-\(trimmedKey.dropFirst(20))"
+            let formatted = "\(cleanedKey.prefix(8))-\(cleanedKey.dropFirst(8).prefix(4))-\(cleanedKey.dropFirst(12).prefix(4))-\(cleanedKey.dropFirst(16).prefix(4))-\(cleanedKey.dropFirst(20))"
             licenseKey = formatted
             isLicenseValid = true
             return true
@@ -612,51 +615,52 @@ struct LicenseDotsInput: View {
     @Binding var licenseInput: String
     @FocusState private var isFocused: Bool
 
-    // Format: 8-4-4-4-12 = 32 chars total
-    // 4 rows: row 0 = 8, row 1 = 4-4, row 2 = 4, row 3 = 12
     private let totalChars = 32
-    private let charsPerRow = 8
+    private let dotsPerRow = 16
+    private let totalRows = 3
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Hidden TextField to capture input
             TextField("", text: $licenseInput)
                 .textFieldStyle(.plain)
+                .frame(width: 1, height: 1)
                 .opacity(0.01)
                 .focused($isFocused)
                 .onChange(of: licenseInput) { _, newValue in
-                    let cleaned = newValue.uppercased().filter { $0.isLetter || $0.isNumber }
-                    if cleaned.count <= totalChars {
+                    let cleaned = newValue.uppercased().filter { $0.isLetter || $0.isNumber || $0 == "-" }
+                    if cleaned.count <= totalChars + 4 { // 32 chars + 4 dashes max
                         licenseInput = cleaned
                     } else {
-                        licenseInput = String(cleaned.prefix(totalChars))
+                        licenseInput = String(cleaned.prefix(totalChars + 4))
                     }
                 }
 
-            // 4 rows of 8 dots each
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(0..<4, id: \.self) { row in
+            // 2 full rows of 16 + 1 row of 4 dots (36 total for 32 chars + 4 dashes)
+            VStack(alignment: .leading, spacing: 18) {
+                ForEach(0..<totalRows, id: \.self) { row in
+                    let dotsInThisRow = row < 2 ? dotsPerRow : 4 // Last row only has 4 dots
                     HStack(spacing: 6) {
-                        ForEach(0..<charsPerRow, id: \.self) { col in
-                            let charIndex = row * charsPerRow + col
-                            let hasChar = charIndex < licenseInput.count
+                        ForEach(0..<dotsInThisRow, id: \.self) { col in
+                            let dotIndex = row * dotsPerRow + col
+                            let hasChar = dotIndex < licenseInput.count
 
                             ZStack {
                                 // Dot (hidden when char is typed)
                                 Circle()
-                                    .fill(Color(hex: "c0c0c0"))
-                                    .frame(width: 8, height: 8)
+                                    .fill(Color(hex: "d0d0d0"))
+                                    .frame(width: 3, height: 3)
                                     .opacity(hasChar ? 0 : 1)
 
                                 // Character
                                 if hasChar {
-                                    let index = licenseInput.index(licenseInput.startIndex, offsetBy: charIndex)
+                                    let index = licenseInput.index(licenseInput.startIndex, offsetBy: dotIndex)
                                     Text(String(licenseInput[index]))
                                         .font(.system(size: 14, weight: .semibold, design: .monospaced))
                                         .foregroundColor(Color(hex: "555555"))
                                 }
                             }
-                            .frame(width: 16, height: 16)
+                            .frame(width: 9, height: 16)
                         }
                     }
                 }
@@ -740,24 +744,24 @@ struct ActivationStep: View {
                             Text(isValidating ? "Validating..." : "Activate")
                         }
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(licenseInput.count >= 32 ? .white : Color(hex: "999999"))
+                        .foregroundColor(licenseInput.filter({ $0 != "-" }).count >= 32 ? .white : Color(hex: "999999"))
                         .frame(maxWidth: .infinity)
                         .frame(height: 48)
                         .background(
                             ZStack {
                                 // Bottom shadow layer (3D effect)
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(licenseInput.count >= 32 ? Color(hex: "E65100") : Color(hex: "cccccc"))
+                                    .fill(licenseInput.filter({ $0 != "-" }).count >= 32 ? Color(hex: "E65100") : Color(hex: "cccccc"))
                                     .offset(y: 4)
 
                                 // Main button
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(licenseInput.count >= 32 ? Color(hex: "FF9500") : Color(hex: "e0e0e0"))
+                                    .fill(licenseInput.filter({ $0 != "-" }).count >= 32 ? Color(hex: "FF9500") : Color(hex: "e0e0e0"))
                             }
                         )
                     }
                     .buttonStyle(.plain)
-                    .disabled(licenseInput.count < 32 || isValidating)
+                    .disabled(licenseInput.filter({ $0 != "-" }).count < 32 || isValidating)
 
                     Spacer()
                         .frame(height: 30)
