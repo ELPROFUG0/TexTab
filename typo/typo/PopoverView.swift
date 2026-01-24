@@ -1119,7 +1119,8 @@ struct PopoverView: View {
                         prompt: action.prompt,
                         text: textToProcess,
                         apiKey: store.apiKey,
-                        provider: store.selectedProvider
+                        provider: store.selectedProvider,
+                        model: store.selectedModel
                     )
                 }
                 await MainActor.run {

@@ -5,6 +5,61 @@
 
 import Foundation
 
+// MARK: - AI Model
+
+struct AIModel: Identifiable, Hashable, Codable {
+    let id: String
+    let name: String
+    let provider: AIProvider
+
+    static let allModels: [AIModel] = [
+        // OpenAI Models
+        AIModel(id: "gpt-4o", name: "GPT-4o", provider: .openai),
+        AIModel(id: "gpt-4o-mini", name: "GPT-4o Mini", provider: .openai),
+        AIModel(id: "gpt-4-turbo", name: "GPT-4 Turbo", provider: .openai),
+        AIModel(id: "gpt-4", name: "GPT-4", provider: .openai),
+        AIModel(id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: .openai),
+        AIModel(id: "o1-preview", name: "o1 Preview", provider: .openai),
+        AIModel(id: "o1-mini", name: "o1 Mini", provider: .openai),
+
+        // Anthropic Models
+        AIModel(id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", provider: .anthropic),
+        AIModel(id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", provider: .anthropic),
+        AIModel(id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku", provider: .anthropic),
+        AIModel(id: "claude-3-opus-20240229", name: "Claude 3 Opus", provider: .anthropic),
+        AIModel(id: "claude-3-haiku-20240307", name: "Claude 3 Haiku", provider: .anthropic),
+
+        // OpenRouter Models
+        AIModel(id: "anthropic/claude-sonnet-4", name: "Claude Sonnet 4", provider: .openrouter),
+        AIModel(id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", provider: .openrouter),
+        AIModel(id: "openai/gpt-4o", name: "GPT-4o", provider: .openrouter),
+        AIModel(id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: .openrouter),
+        AIModel(id: "google/gemini-pro-1.5", name: "Gemini Pro 1.5", provider: .openrouter),
+        AIModel(id: "meta-llama/llama-3.1-405b-instruct", name: "Llama 3.1 405B", provider: .openrouter),
+        AIModel(id: "mistralai/mistral-large", name: "Mistral Large", provider: .openrouter),
+
+        // Perplexity Models
+        AIModel(id: "llama-3.1-sonar-small-128k-online", name: "Sonar Small", provider: .perplexity),
+        AIModel(id: "llama-3.1-sonar-large-128k-online", name: "Sonar Large", provider: .perplexity),
+        AIModel(id: "llama-3.1-sonar-huge-128k-online", name: "Sonar Huge", provider: .perplexity),
+
+        // Groq Models
+        AIModel(id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", provider: .groq),
+        AIModel(id: "llama-3.1-70b-versatile", name: "Llama 3.1 70B", provider: .groq),
+        AIModel(id: "llama-3.1-8b-instant", name: "Llama 3.1 8B", provider: .groq),
+        AIModel(id: "mixtral-8x7b-32768", name: "Mixtral 8x7B", provider: .groq),
+        AIModel(id: "gemma2-9b-it", name: "Gemma 2 9B", provider: .groq),
+    ]
+
+    static func models(for provider: AIProvider) -> [AIModel] {
+        allModels.filter { $0.provider == provider }
+    }
+
+    static func defaultModel(for provider: AIProvider) -> AIModel {
+        models(for: provider).first ?? AIModel(id: provider.defaultModelId, name: provider.defaultModelId, provider: provider)
+    }
+}
+
 // MARK: - AI Provider
 
 enum AIProvider: String, CaseIterable, Codable {
@@ -29,7 +84,7 @@ enum AIProvider: String, CaseIterable, Codable {
         }
     }
 
-    var defaultModel: String {
+    var defaultModelId: String {
         switch self {
         case .openai:
             return "gpt-4o-mini"
@@ -80,16 +135,16 @@ enum AIProvider: String, CaseIterable, Codable {
 class AIService {
     static let shared = AIService()
 
-    func processText(prompt: String, text: String, apiKey: String, provider: AIProvider) async throws -> String {
+    func processText(prompt: String, text: String, apiKey: String, provider: AIProvider, model: AIModel) async throws -> String {
         guard !apiKey.isEmpty else {
             return "[Demo Mode] API key not configured. Go to Settings to add your API key."
         }
 
         switch provider {
         case .anthropic:
-            return try await callAnthropic(prompt: prompt, text: text, apiKey: apiKey)
+            return try await callAnthropic(prompt: prompt, text: text, apiKey: apiKey, model: model)
         default:
-            return try await callOpenAICompatible(prompt: prompt, text: text, apiKey: apiKey, provider: provider)
+            return try await callOpenAICompatible(prompt: prompt, text: text, apiKey: apiKey, provider: provider, model: model)
         }
     }
 
@@ -155,7 +210,7 @@ class AIService {
 
     // MARK: - OpenAI Compatible APIs (OpenAI, OpenRouter, Perplexity, Groq)
 
-    private func callOpenAICompatible(prompt: String, text: String, apiKey: String, provider: AIProvider) async throws -> String {
+    private func callOpenAICompatible(prompt: String, text: String, apiKey: String, provider: AIProvider, model: AIModel) async throws -> String {
         let url = URL(string: provider.baseURL)!
 
         var request = URLRequest(url: url)
@@ -169,7 +224,7 @@ class AIService {
         }
 
         let body: [String: Any] = [
-            "model": provider.defaultModel,
+            "model": model.id,
             "messages": [
                 ["role": "system", "content": prompt],
                 ["role": "user", "content": text]
@@ -204,7 +259,7 @@ class AIService {
 
     // MARK: - Anthropic API
 
-    private func callAnthropic(prompt: String, text: String, apiKey: String) async throws -> String {
+    private func callAnthropic(prompt: String, text: String, apiKey: String, model: AIModel) async throws -> String {
         let url = URL(string: AIProvider.anthropic.baseURL)!
 
         var request = URLRequest(url: url)
@@ -214,7 +269,7 @@ class AIService {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
-            "model": AIProvider.anthropic.defaultModel,
+            "model": model.id,
             "max_tokens": 2000,
             "system": prompt,
             "messages": [

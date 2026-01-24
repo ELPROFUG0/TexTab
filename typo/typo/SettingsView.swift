@@ -139,8 +139,13 @@ struct GeneralSettingsView: View {
     @State private var apiKeyInput: String = ""
     @State private var perplexityApiKeyInput: String = ""
     @State private var selectedProvider: AIProvider = .openai
+    @State private var selectedModelId: String = ""
     @State private var selectedTheme: AppTheme = .system
     @Environment(\.colorScheme) var colorScheme
+
+    private var availableModels: [AIModel] {
+        AIModel.models(for: selectedProvider)
+    }
 
     // App accent blue color
     private var appBlue: Color {
@@ -176,9 +181,25 @@ struct GeneralSettingsView: View {
                         .labelsHidden()
                         .onChange(of: selectedProvider) { _, newValue in
                             store.saveProvider(newValue)
+                            selectedModelId = store.selectedModelId
+                            // Load API key for the new provider
+                            apiKeyInput = store.apiKey(for: newValue)
                         }
                         .onAppear {
                             selectedProvider = store.selectedProvider
+                            selectedModelId = store.selectedModelId
+                            apiKeyInput = store.apiKey(for: store.selectedProvider)
+                        }
+
+                        Picker("", selection: $selectedModelId) {
+                            ForEach(availableModels) { model in
+                                Text(model.name).tag(model.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .onChange(of: selectedModelId) { _, newValue in
+                            store.saveModel(newValue)
                         }
 
                         Spacer()
@@ -195,7 +216,7 @@ struct GeneralSettingsView: View {
                         }
                         .frame(width: 160, alignment: .leading)
 
-                        SecureField("Enter your API key", text: $apiKeyInput)
+                        SecureField(selectedProvider.apiKeyPlaceholder, text: $apiKeyInput)
                             .textFieldStyle(.plain)
                             .font(.nunitoRegularBold(size: 13))
                             .padding(10)
@@ -203,11 +224,8 @@ struct GeneralSettingsView: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                             )
-                            .onAppear {
-                                apiKeyInput = store.apiKey
-                            }
                             .onChange(of: apiKeyInput) { _, newValue in
-                                store.saveApiKey(newValue)
+                                store.saveApiKey(newValue, for: selectedProvider)
                             }
                     }
 
