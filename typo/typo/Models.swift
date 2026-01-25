@@ -185,6 +185,8 @@ class ActionsStore: ObservableObject {
     @Published var selectedModelIds: [AIProvider: String] = [:]
     @Published var perplexityApiKey: String = ""
     @Published var installedPlugins: Set<PluginType> = []
+    @Published var mainShortcut: String = "T"
+    @Published var mainShortcutModifiers: [String] = ["\u{2318}", "\u{21E7}"]
 
     private let actionsKey = "typo_actions"
     private let apiKeysKey = "typo_api_keys"
@@ -192,6 +194,8 @@ class ActionsStore: ObservableObject {
     private let modelIdsKey = "typo_model_ids"
     private let perplexityApiKeyKey = "typo_perplexity_api_key"
     private let installedPluginsKey = "typo_installed_plugins"
+    private let mainShortcutKey = "typo_main_shortcut"
+    private let mainShortcutModifiersKey = "typo_main_shortcut_modifiers"
 
     static let shared = ActionsStore()
 
@@ -212,6 +216,20 @@ class ActionsStore: ObservableObject {
         return AIModel.defaultModel(for: selectedProvider)
     }
 
+    var mainCarbonModifiers: UInt32 {
+        var mods: UInt32 = 0
+        for m in mainShortcutModifiers {
+            switch m {
+            case "\u{2318}": mods |= UInt32(cmdKey)
+            case "\u{21E7}": mods |= UInt32(shiftKey)
+            case "\u{2325}": mods |= UInt32(optionKey)
+            case "^":        mods |= UInt32(controlKey)
+            default: break
+            }
+        }
+        return mods
+    }
+
     init() {
         loadActions()
         loadApiKeys()
@@ -219,6 +237,7 @@ class ActionsStore: ObservableObject {
         loadModelIds()
         loadPerplexityApiKey()
         loadInstalledPlugins()
+        loadMainShortcut()
     }
 
     func loadActions() {
@@ -320,6 +339,20 @@ class ActionsStore: ObservableObject {
         if let encoded = try? JSONEncoder().encode(Array(installedPlugins)) {
             UserDefaults.standard.set(encoded, forKey: installedPluginsKey)
         }
+    }
+
+    func loadMainShortcut() {
+        if let key = UserDefaults.standard.string(forKey: mainShortcutKey) {
+            mainShortcut = key
+        }
+        if let mods = UserDefaults.standard.stringArray(forKey: mainShortcutModifiersKey) {
+            mainShortcutModifiers = mods
+        }
+    }
+
+    func saveMainShortcut() {
+        UserDefaults.standard.set(mainShortcut, forKey: mainShortcutKey)
+        UserDefaults.standard.set(mainShortcutModifiers, forKey: mainShortcutModifiersKey)
     }
 
     func installPlugin(_ pluginType: PluginType) {

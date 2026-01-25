@@ -142,6 +142,10 @@ struct GeneralSettingsView: View {
     @State private var selectedModelId: String = ""
     @State private var selectedTheme: AppTheme = .system
     @State private var showModelTooltip: Bool = false
+    @State private var isRecordingMainShortcut = false
+    @State private var mainRecordedKeys: [String] = []
+    @State private var mainShortcutConflict: String? = nil
+    @State private var mainShortcutMonitor: Any? = nil
     @Environment(\.colorScheme) var colorScheme
 
     private var availableModels: [AIModel] {
@@ -294,28 +298,46 @@ struct GeneralSettingsView: View {
                         .font(.nunitoBold(size: 18))
                         .foregroundColor(.primary)
 
-                    HStack {
-                        HStack(spacing: 10) {
-                            Image(systemName: "keyboard.fill")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.pink)
-                            Text("Global Shortcut")
-                                .font(.nunitoRegularBold(size: 15))
-                                .foregroundColor(.secondary)
+                    VStack(spacing: 0) {
+                        if isRecordingMainShortcut {
+                            ShortcutTooltip(recordedKeys: mainRecordedKeys, conflictName: mainShortcutConflict)
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity),
+                                    removal: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity)
+                                ))
+                                .padding(.bottom, 8)
                         }
-                        Spacer()
-                        HStack(spacing: 6) {
-                            Settings3DKey(text: "⌘")
-                            Settings3DKey(text: "⇧")
-                            Settings3DKey(text: "T")
+
+                        HStack {
+                            HStack(spacing: 10) {
+                                Image(systemName: "keyboard.fill")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.pink)
+                                Text("Global Shortcut")
+                                    .font(.nunitoRegularBold(size: 15))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Button(action: {
+                                startRecordingMainShortcut()
+                            }) {
+                                HStack(spacing: 6) {
+                                    ForEach(store.mainShortcutModifiers, id: \.self) { mod in
+                                        Settings3DKey(text: mod)
+                                    }
+                                    Settings3DKey(text: store.mainShortcut)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.gray.opacity(0.08))
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.gray.opacity(0.08))
-                        )
                     }
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isRecordingMainShortcut)
 
                     HStack {
                         HStack(spacing: 10) {
@@ -435,6 +457,122 @@ struct GeneralSettingsView: View {
            let theme = AppTheme(rawValue: savedTheme) {
             selectedTheme = theme
             applyTheme(theme)
+        }
+    }
+
+    private func stopRecordingMainShortcut() {
+        if let monitor = mainShortcutMonitor {
+            NSEvent.removeMonitor(monitor)
+            mainShortcutMonitor = nil
+        }
+        isRecordingMainShortcut = false
+        mainShortcutConflict = nil
+        mainRecordedKeys = []
+        globalAppDelegate?.resumeHotkeys()
+    }
+
+    private func startRecordingMainShortcut() {
+        if let monitor = mainShortcutMonitor {
+            NSEvent.removeMonitor(monitor)
+            mainShortcutMonitor = nil
+        }
+
+        isRecordingMainShortcut = true
+        mainRecordedKeys = []
+        mainShortcutConflict = nil
+
+        globalAppDelegate?.suspendHotkeys()
+
+        let keyCodeMap: [UInt16: String] = [
+            0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X",
+            8: "C", 9: "V", 11: "B", 12: "Q", 13: "W", 14: "E", 15: "R",
+            16: "Y", 17: "T", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
+            23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
+            30: "]", 31: "O", 32: "U", 33: "[", 34: "I", 35: "P", 37: "L",
+            38: "J", 39: "'", 40: "K", 41: ";", 42: "\\", 43: ",", 44: "/",
+            45: "N", 46: "M", 47: "."
+        ]
+
+        mainShortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+            guard self.isRecordingMainShortcut else { return event }
+
+            if event.type == .keyDown && event.keyCode == 53 {
+                withAnimation {
+                    self.stopRecordingMainShortcut()
+                }
+                return nil
+            }
+
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+            var currentModifiers: [String] = []
+            if modifiers.contains(.control) { currentModifiers.append("^") }
+            if modifiers.contains(.option) { currentModifiers.append("\u{2325}") }
+            if modifiers.contains(.shift) { currentModifiers.append("\u{21E7}") }
+            if modifiers.contains(.command) { currentModifiers.append("\u{2318}") }
+
+            if event.type == .flagsChanged {
+                self.mainShortcutConflict = nil
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                    self.mainRecordedKeys = currentModifiers
+                }
+                return event
+            }
+
+            if event.type == .keyDown {
+                let hasCommand = modifiers.contains(.command)
+                let hasOption = modifiers.contains(.option)
+
+                if !hasCommand && !hasOption {
+                    return event
+                }
+
+                let key = keyCodeMap[event.keyCode] ?? event.charactersIgnoringModifiers?.uppercased() ?? ""
+                if !key.isEmpty && key.count == 1 {
+                    var finalKeys = currentModifiers
+                    finalKeys.append(key)
+
+                    // Check for conflicts with action shortcuts
+                    let currentModSet = Set(currentModifiers)
+                    let conflictingAction = ActionsStore.shared.actions.first { action in
+                        !action.shortcut.isEmpty &&
+                        action.shortcut.uppercased() == key &&
+                        Set(action.shortcutModifiers) == currentModSet
+                    }
+
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        self.mainRecordedKeys = finalKeys
+                    }
+
+                    if let conflict = conflictingAction {
+                        withAnimation {
+                            self.mainShortcutConflict = conflict.name
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            if self.mainShortcutConflict != nil {
+                                withAnimation {
+                                    self.mainShortcutConflict = nil
+                                    self.mainRecordedKeys = []
+                                }
+                            }
+                        }
+                        return nil
+                    }
+
+                    // Save the new main shortcut
+                    self.store.mainShortcutModifiers = currentModifiers
+                    self.store.mainShortcut = key
+                    self.store.saveMainShortcut()
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation {
+                            self.stopRecordingMainShortcut()
+                        }
+                    }
+                    return nil
+                }
+            }
+            return event
         }
     }
 }
@@ -1055,7 +1193,8 @@ struct ActionEditorView: View {
                     }
 
                     // Also check against the main popup hotkey (⌘⇧T)
-                    let isMainHotkeyConflict = key == "T" && currentModSet == Set(["\u{2318}", "\u{21E7}"])
+                    let mainStore = ActionsStore.shared
+                    let isMainHotkeyConflict = key == mainStore.mainShortcut.uppercased() && currentModSet == Set(mainStore.mainShortcutModifiers)
 
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         self.recordedKeys = finalKeys

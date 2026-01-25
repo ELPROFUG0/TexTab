@@ -85,6 +85,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.setupActionHotkeys()
             }
             .store(in: &cancellables)
+
+        // Observar cambios en el shortcut principal
+        ActionsStore.shared.$mainShortcut
+            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .sink { [weak self] _ in
+                if let ref = self?.hotKeyRef {
+                    UnregisterEventHotKey(ref)
+                }
+                self?.setupGlobalHotkey()
+            }
+            .store(in: &cancellables)
     }
 
     func showOnboarding() {
@@ -270,19 +281,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func setupGlobalHotkey() {
-        // Usar Carbon API para registrar hotkey global (más confiable)
-        // Cmd + Shift + T (keyCode 17 = T)
+        let store = ActionsStore.shared
         var hotKeyID = EventHotKeyID()
         hotKeyID.signature = OSType(0x5459504F) // "TYPO"
         hotKeyID.id = 1
 
-        // Registrar Cmd + Shift + T
-        let modifiers = UInt32(cmdKey | shiftKey)
-        let keyCode = UInt32(17) // T key
+        let modifiers = store.mainCarbonModifiers
+        guard let keyCode = keyCodeForCharacter(store.mainShortcut.uppercased()) else { return }
 
         RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
 
-        print("Hotkey registered: Cmd + Shift + T")
+        print("Hotkey registered: \(store.mainShortcutModifiers.joined()) + \(store.mainShortcut)")
     }
 
     func setupActionHotkeys() {
