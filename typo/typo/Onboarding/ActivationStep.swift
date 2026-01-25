@@ -33,7 +33,7 @@ struct ActivationStep: View {
                     Spacer()
                         .frame(height: 10)
 
-                    Text("To continue, please activate your\nlicense of Typo.")
+                    Text("To continue, please activate your\nlicense of TexTab.")
                         .font(.system(size: 14))
                         .foregroundColor(Color(hex: "666666"))
                         .lineSpacing(3)

@@ -1203,7 +1203,7 @@ struct ActionEditorView: View {
                     // Determine conflict name
                     var conflictName: String? = nil
                     if isMainHotkeyConflict {
-                        conflictName = "Open Typo"
+                        conflictName = "Open TexTab"
                     } else if let conflict = conflictingAction {
                         conflictName = conflict.name
                     }
@@ -1950,7 +1950,7 @@ struct AboutView: View {
                     AboutActionRow(
                         icon: "arrow.triangle.2.circlepath",
                         title: "Check for Updates",
-                        subtitle: "Keep Typo up to date with the latest features.",
+                        subtitle: "Keep TexTab up to date with the latest features.",
                         buttonTitle: "Check",
                         action: {
                             if let url = URL(string: "https://typo.app/updates") {

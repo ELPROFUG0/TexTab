@@ -247,7 +247,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 catIcon.isTemplate = true
                 button.image = catIcon
             } else {
-                button.image = NSImage(systemSymbolName: "text.cursor", accessibilityDescription: "Typo")
+                button.image = NSImage(systemSymbolName: "text.cursor", accessibilityDescription: "TexTab")
             }
             button.action = #selector(statusBarButtonClicked(_:))
             button.target = self
@@ -262,7 +262,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Click derecho: mostrar menú
             let menu = NSMenu()
 
-            let openItem = NSMenuItem(title: "Open Typo", action: #selector(showPopover), keyEquivalent: "")
+            let openItem = NSMenuItem(title: "Open TexTab", action: #selector(showPopover), keyEquivalent: "")
             openItem.target = self
             menu.addItem(openItem)
 

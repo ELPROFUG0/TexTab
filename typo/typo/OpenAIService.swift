@@ -274,7 +274,7 @@ class AIService {
 
         // OpenRouter requiere headers adicionales
         if provider == .openrouter {
-            request.addValue("Typo App", forHTTPHeaderField: "X-Title")
+            request.addValue("TexTab App", forHTTPHeaderField: "X-Title")
         }
 
         let body: [String: Any] = [

@@ -14,7 +14,7 @@ struct ContentView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.accentColor)
 
-            Text("Typo is running")
+            Text("TexTab is running")
                 .font(.title2.bold())
 
             Text("Press ⌘ + ⇧ + Space to open")

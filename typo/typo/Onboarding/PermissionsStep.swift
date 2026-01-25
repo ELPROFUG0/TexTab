@@ -40,7 +40,7 @@ struct PermissionsStep: View {
                     Spacer()
                         .frame(height: 10)
 
-                    Text("Accessibility permissions are required\nfor Typo to function.")
+                    Text("Accessibility permissions are required\nfor TexTab to function.")
                         .font(.system(size: 14))
                         .foregroundColor(Color(hex: "666666"))
                         .lineSpacing(3)
@@ -60,7 +60,7 @@ struct PermissionsStep: View {
                     } else {
                         VStack(spacing: 12) {
                             StepRow(number: 1, text: "Click 'Grant Permissions'")
-                            StepRow(number: 2, text: "Find Typo in the list")
+                            StepRow(number: 2, text: "Find TexTab in the list")
                             StepRow(number: 3, text: "Enable using the toggle")
                         }
 

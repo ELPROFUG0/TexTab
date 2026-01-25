@@ -40,7 +40,7 @@ struct FeaturesStep: View {
                 Spacer()
                     .frame(height: 16)
 
-                Text("What Typo can do")
+                Text("What TexTab can do")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
 

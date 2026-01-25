@@ -34,7 +34,7 @@ struct ShortcutStep: View {
                     Spacer()
                         .frame(height: 10)
 
-                    Text("Set your keyboard shortcut to\nsummon Typo from anywhere.")
+                    Text("Set your keyboard shortcut to\nsummon TexTab from anywhere.")
                         .font(.system(size: 14))
                         .foregroundColor(Color(hex: "666666"))
                         .lineSpacing(3)
