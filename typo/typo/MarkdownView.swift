@@ -17,7 +17,16 @@ struct MarkdownView: View {
 
     private func parseBlocks() -> [AnyView] {
         var views: [AnyView] = []
-        let lines = text.components(separatedBy: "\n")
+        // Normalize line endings and special characters
+        let normalizedText = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .replacingOccurrences(of: "`", with: "`")  // Curly backtick to straight
+            .replacingOccurrences(of: "´", with: "`")  // Acute accent to backtick
+            .replacingOccurrences(of: "'", with: "`")  // Smart quote to backtick (when used as code)
+            .replacingOccurrences(of: "＃", with: "#")  // Full-width # to ASCII
+            .replacingOccurrences(of: "♯", with: "#")  // Musical sharp to #
+        let lines = normalizedText.components(separatedBy: "\n")
         var i = 0
 
         while i < lines.count {
@@ -120,12 +129,21 @@ struct MarkdownView: View {
         return views
     }
 
+    // App blue color (same as Replace button)
+    private var appBlue: Color {
+        Color(red: 0.0, green: 0.584, blue: 1.0)
+    }
+
     // MARK: - Block Views
 
     private func headerView(_ content: String, level: Int) -> some View {
         let fontSize: CGFloat = level == 1 ? 20 : (level == 2 ? 17 : 15)
-        return Text(content)
-            .font(.system(size: fontSize, weight: .bold))
+        // Strip ** from headers since headers are already bold
+        let cleanContent = content
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "__", with: "")
+        return Text(cleanContent)
+            .font(.nunitoBold(size: fontSize))
             .foregroundColor(.primary)
             .padding(.top, level == 1 ? 14 : (level == 2 ? 10 : 6))
             .padding(.bottom, 2)
@@ -134,7 +152,7 @@ struct MarkdownView: View {
     private func bulletView(_ content: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text("•")
-                .font(.system(size: 14))
+                .font(.nunitoRegularBold(size: 14))
                 .foregroundColor(.secondary)
             inlineMarkdown(content)
         }
@@ -144,7 +162,7 @@ struct MarkdownView: View {
     private func numberedView(number: String, content: String) -> some View {
         HStack(alignment: .top, spacing: 4) {
             Text(number)
-                .font(.system(size: 14))
+                .font(.nunitoRegularBold(size: 14))
                 .foregroundColor(.secondary)
                 .frame(minWidth: 20, alignment: .trailing)
             inlineMarkdown(content)
@@ -165,39 +183,40 @@ struct MarkdownView: View {
             switch token {
             case .plain(let str):
                 result = result + Text(str)
-                    .font(.system(size: 14))
-                    .foregroundColor(Color(hex: "555555"))
+                    .font(.nunitoRegularBold(size: 14))
+                    .foregroundColor(.primary.opacity(0.85))
 
             case .bold(let str):
                 result = result + Text(str)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color(hex: "444444"))
+                    .font(.nunitoBold(size: 14))
+                    .foregroundColor(.primary)
 
             case .italic(let str):
                 result = result + Text(str)
-                    .font(.system(size: 14).italic())
-                    .foregroundColor(Color(hex: "555555"))
+                    .font(.nunitoRegularBold(size: 14).italic())
+                    .foregroundColor(.primary.opacity(0.85))
 
             case .code(let str):
                 result = result + Text(" \(str) ")
                     .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(Color(hex: "d63384"))
+                    .foregroundColor(appBlue)
 
             case .link(let linkText, let urlString):
                 // Use markdown syntax for clickable links
                 if URL(string: urlString) != nil {
                     result = result + Text(.init("[\(linkText)](\(urlString))"))
-                        .font(.system(size: 14))
+                        .font(.nunitoRegularBold(size: 14))
+                        .foregroundColor(appBlue)
                 } else {
                     result = result + Text(linkText)
-                        .font(.system(size: 14))
-                        .foregroundColor(.accentColor)
+                        .font(.nunitoRegularBold(size: 14))
+                        .foregroundColor(appBlue)
                 }
             }
         }
 
         return result
-            .lineSpacing(5)
+            .lineSpacing(6)
             .textSelection(.enabled)
     }
 
@@ -213,7 +232,10 @@ struct MarkdownView: View {
 
     private func tokenize(_ text: String) -> [InlineToken] {
         var tokens: [InlineToken] = []
+        // Normalize backticks for inline parsing too
         var remaining = text
+            .replacingOccurrences(of: "`", with: "`")  // Curly backtick to straight
+            .replacingOccurrences(of: "´", with: "`")  // Acute accent to backtick
 
         while !remaining.isEmpty {
             // Inline code `code`
