@@ -243,7 +243,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "text.cursor", accessibilityDescription: "Typo")
+            if let catIcon = NSImage(named: "MenuBarIcon") {
+                catIcon.isTemplate = true
+                button.image = catIcon
+            } else {
+                button.image = NSImage(systemSymbolName: "text.cursor", accessibilityDescription: "Typo")
+            }
             button.action = #selector(statusBarButtonClicked(_:))
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])

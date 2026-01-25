@@ -1,0 +1,14 @@
+<svg width="18" height="18" viewBox="0 0 40 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Oreja izquierda /\ -->
+    <path d="M8 14 L12 2 L16 14" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Oreja derecha /\ -->
+    <path d="M24 14 L28 2 L32 14" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Linea que conecta _ -->
+    <path d="M16 14 L24 14" stroke="black" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Cara ( ) -->
+    <path d="M6 20 Q2 26 8 32" stroke="black" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    <path d="M34 20 Q38 26 32 32" stroke="black" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    <!-- Ojos o.o -->
+    <circle cx="14" cy="24" r="2.5" fill="black"/>
+    <circle cx="26" cy="24" r="2.5" fill="black"/>
+</svg>
