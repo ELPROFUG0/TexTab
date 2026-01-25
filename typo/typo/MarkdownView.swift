@@ -202,6 +202,11 @@ struct MarkdownView: View {
                 part.font = .system(size: 12, design: .monospaced)
                 part.foregroundColor = appBlue
 
+            case .boldCode(let str):
+                part = AttributedString(" \(str) ")
+                part.font = .system(size: 12, weight: .bold, design: .monospaced)
+                part.foregroundColor = appBlue
+
             case .link(let linkText, let urlString):
                 if let url = URL(string: urlString) {
                     part = AttributedString(linkText)
@@ -227,6 +232,7 @@ struct MarkdownView: View {
     private enum InlineToken {
         case plain(String)
         case bold(String)
+        case boldCode(String)  // Code inside bold
         case italic(String)
         case code(String)
         case link(text: String, url: String)
@@ -247,16 +253,28 @@ struct MarkdownView: View {
                 continue
             }
 
-            // Bold **text**
+            // Bold **text** - check for code inside
             if let (fullMatch, content) = matchPattern(#"^\*\*(.+?)\*\*"#, in: remaining) {
-                tokens.append(.bold(content))
+                // Check if content has backticks (code inside bold)
+                if content.contains("`") {
+                    // Parse the bold content for code spans
+                    let boldTokens = tokenizeBoldContent(content)
+                    tokens.append(contentsOf: boldTokens)
+                } else {
+                    tokens.append(.bold(content))
+                }
                 remaining = String(remaining.dropFirst(fullMatch.count))
                 continue
             }
 
             // Bold __text__
             if let (fullMatch, content) = matchPattern(#"^__(.+?)__"#, in: remaining) {
-                tokens.append(.bold(content))
+                if content.contains("`") {
+                    let boldTokens = tokenizeBoldContent(content)
+                    tokens.append(contentsOf: boldTokens)
+                } else {
+                    tokens.append(.bold(content))
+                }
                 remaining = String(remaining.dropFirst(fullMatch.count))
                 continue
             }
@@ -328,6 +346,43 @@ struct MarkdownView: View {
               let textRange = Range(match.range(at: 1), in: text),
               let urlRange = Range(match.range(at: 2), in: text) else { return nil }
         return (String(text[fullRange]), String(text[textRange]), String(text[urlRange]))
+    }
+
+    // Parse bold content that may contain code spans
+    private func tokenizeBoldContent(_ text: String) -> [InlineToken] {
+        var tokens: [InlineToken] = []
+        var remaining = text
+
+        while !remaining.isEmpty {
+            // Check for code span inside bold
+            if let (fullMatch, content) = matchPattern(#"^`([^`]+)`"#, in: remaining) {
+                tokens.append(.boldCode(content))
+                remaining = String(remaining.dropFirst(fullMatch.count))
+                continue
+            }
+
+            // Plain bold text - consume until backtick or end
+            var plainEnd = remaining.startIndex
+            for idx in remaining.indices {
+                if remaining[idx] == "`" {
+                    plainEnd = idx
+                    break
+                }
+                plainEnd = remaining.index(after: idx)
+            }
+
+            if plainEnd > remaining.startIndex {
+                let plain = String(remaining[..<plainEnd])
+                tokens.append(.bold(plain))
+                remaining = String(remaining[plainEnd...])
+            } else if !remaining.isEmpty {
+                // Single backtick that didn't match - treat as bold
+                tokens.append(.bold(String(remaining.first!)))
+                remaining = String(remaining.dropFirst())
+            }
+        }
+
+        return tokens
     }
 }
 
