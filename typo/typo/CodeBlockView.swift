@@ -107,14 +107,15 @@ struct CodeBlockView: View {
     private func highlightedLine(_ line: String) -> Text {
         let lang = language.lowercased()
         let tokens = tokenizeLine(line, language: lang)
-        var result = Text("")
+        var attributed = AttributedString()
         for token in tokens {
             let color = colorForTokenType(token.type)
-            result = result + Text(token.text)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(color)
+            var part = AttributedString(token.text)
+            part.font = .system(size: 12, design: .monospaced)
+            part.foregroundColor = color
+            attributed.append(part)
         }
-        return result
+        return Text(attributed)
     }
 
     private struct SyntaxToken {

@@ -487,7 +487,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Restaurar el foco a la app anterior
         if let previousApp = previousActiveApp {
-            previousApp.activate(options: .activateIgnoringOtherApps)
+            previousApp.activate()
         }
     }
 
@@ -501,7 +501,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Restaurar el foco a la app anterior y pegar
         if let previousApp = previousActiveApp {
-            previousApp.activate(options: .activateIgnoringOtherApps)
+            previousApp.activate()
 
             // Esperar a que la app anterior tenga el foco
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {

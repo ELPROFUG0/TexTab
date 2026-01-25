@@ -177,45 +177,47 @@ struct MarkdownView: View {
 
     private func inlineMarkdown(_ text: String) -> some View {
         let tokens = tokenize(text)
-        var result = Text("")
+        var attributed = AttributedString()
 
         for token in tokens {
+            var part: AttributedString
             switch token {
             case .plain(let str):
-                result = result + Text(str)
-                    .font(.nunitoRegularBold(size: 14))
-                    .foregroundColor(.primary.opacity(0.85))
+                part = AttributedString(str)
+                part.font = .nunitoRegularBold(size: 14)
+                part.foregroundColor = Color.primary.opacity(0.85)
 
             case .bold(let str):
-                result = result + Text(str)
-                    .font(.nunitoBold(size: 14))
-                    .foregroundColor(.primary)
+                part = AttributedString(str)
+                part.font = .nunitoBold(size: 14)
+                part.foregroundColor = Color.primary
 
             case .italic(let str):
-                result = result + Text(str)
-                    .font(.nunitoRegularBold(size: 14).italic())
-                    .foregroundColor(.primary.opacity(0.85))
+                part = AttributedString(str)
+                part.font = .nunitoRegularBold(size: 14).italic()
+                part.foregroundColor = Color.primary.opacity(0.85)
 
             case .code(let str):
-                result = result + Text(" \(str) ")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(appBlue)
+                part = AttributedString(" \(str) ")
+                part.font = .system(size: 12, design: .monospaced)
+                part.foregroundColor = appBlue
 
             case .link(let linkText, let urlString):
-                // Use markdown syntax for clickable links
-                if URL(string: urlString) != nil {
-                    result = result + Text(.init("[\(linkText)](\(urlString))"))
-                        .font(.nunitoRegularBold(size: 14))
-                        .foregroundColor(appBlue)
+                if let url = URL(string: urlString) {
+                    part = AttributedString(linkText)
+                    part.font = .nunitoRegularBold(size: 14)
+                    part.foregroundColor = appBlue
+                    part.link = url
                 } else {
-                    result = result + Text(linkText)
-                        .font(.nunitoRegularBold(size: 14))
-                        .foregroundColor(appBlue)
+                    part = AttributedString(linkText)
+                    part.font = .nunitoRegularBold(size: 14)
+                    part.foregroundColor = appBlue
                 }
             }
+            attributed.append(part)
         }
 
-        return result
+        return Text(attributed)
             .lineSpacing(6)
             .textSelection(.enabled)
     }
