@@ -132,11 +132,15 @@ struct ChatView: View {
                         emptyState
                     } else {
                         ForEach(messages) { message in
-                            MessageBubble(message: message, appBlue: appBlue)
-                                .id(message.id)
+                            // Hide empty streaming message (we show typing indicator instead)
+                            if !(message.id == streamingMessageId && message.content.isEmpty) {
+                                MessageBubble(message: message, appBlue: appBlue)
+                                    .id(message.id)
+                            }
                         }
 
-                        if isProcessing {
+                        // Show typing indicator only when processing AND streaming message is empty
+                        if isProcessing && isStreamingMessageEmpty {
                             typingIndicator
                         }
                     }
@@ -179,27 +183,23 @@ struct ChatView: View {
         .padding(.vertical, 40)
     }
 
+    // Check if streaming message is empty
+    private var isStreamingMessageEmpty: Bool {
+        guard let id = streamingMessageId,
+              let message = messages.first(where: { $0.id == id }) else {
+            return true
+        }
+        return message.content.isEmpty
+    }
+
     // MARK: - Typing Indicator
 
     private var typingIndicator: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<3, id: \.self) { index in
-                Circle()
-                    .fill(appBlue.opacity(0.6))
-                    .frame(width: 8, height: 8)
-                    .scaleEffect(isProcessing ? 1 : 0.5)
-                    .animation(
-                        Animation.easeInOut(duration: 0.6)
-                            .repeatForever()
-                            .delay(Double(index) * 0.2),
-                        value: isProcessing
-                    )
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color.gray.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        TypingDotsView(appBlue: appBlue)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.gray.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     // Calculate input height based on content (1-3 lines)
@@ -494,6 +494,42 @@ class ChatTextView: NSTextView {
         let lineHeight: CGFloat = 20
         let minHeight: CGFloat = lineHeight + textContainerInset.height * 2
         return NSSize(width: NSView.noIntrinsicMetric, height: minHeight)
+    }
+}
+
+// MARK: - Typing Dots Animation
+
+struct TypingDotsView: View {
+    let appBlue: Color
+    @State private var animatingDots: [Bool] = [false, false, false]
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(appBlue.opacity(0.7))
+                    .frame(width: 6, height: 6)
+                    .offset(y: animatingDots[index] ? -4 : 0)
+            }
+        }
+        .onAppear {
+            startAnimation()
+        }
+    }
+
+    private func startAnimation() {
+        // Staggered bounce animation for each dot
+        for index in 0..<3 {
+            let delay = Double(index) * 0.15
+            withAnimation(
+                Animation
+                    .easeInOut(duration: 0.4)
+                    .repeatForever(autoreverses: true)
+                    .delay(delay)
+            ) {
+                animatingDots[index] = true
+            }
+        }
     }
 }
 
