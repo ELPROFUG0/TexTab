@@ -216,6 +216,190 @@ class AIService {
         }
     }
 
+    // MARK: - Chat with Streaming
+    func chatStream(
+        messages: [(role: String, content: String)],
+        apiKey: String,
+        provider: AIProvider,
+        model: AIModel,
+        onChunk: @escaping (String) -> Void
+    ) async throws {
+        guard !apiKey.isEmpty else {
+            onChunk("[Demo Mode] API key not configured. Go to Settings to add your API key.")
+            return
+        }
+
+        switch provider {
+        case .anthropic:
+            try await streamAnthropicChat(messages: messages, apiKey: apiKey, model: model, onChunk: onChunk)
+        default:
+            try await streamOpenAICompatibleChat(messages: messages, apiKey: apiKey, provider: provider, model: model, onChunk: onChunk)
+        }
+    }
+
+    // MARK: - OpenAI Compatible Streaming
+    private func streamOpenAICompatibleChat(
+        messages: [(role: String, content: String)],
+        apiKey: String,
+        provider: AIProvider,
+        model: AIModel,
+        onChunk: @escaping (String) -> Void
+    ) async throws {
+        let url = URL(string: provider.baseURL)!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if provider == .openrouter {
+            request.addValue("TexTab App", forHTTPHeaderField: "X-Title")
+        }
+
+        // Convert messages to API format
+        var apiMessages: [[String: String]] = [
+            ["role": "system", "content": "You are a helpful AI assistant. Be concise and helpful. Use markdown formatting when appropriate, including code blocks with language tags for code."]
+        ]
+
+        for message in messages {
+            apiMessages.append(["role": message.role, "content": message.content])
+        }
+
+        let body: [String: Any] = [
+            "model": model.id,
+            "messages": apiMessages,
+            "max_tokens": 4000,
+            "temperature": 0.7,
+            "stream": true
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIError.invalidResponse
+        }
+
+        if httpResponse.statusCode != 200 {
+            // Collect error response
+            var errorData = Data()
+            for try await byte in bytes {
+                errorData.append(byte)
+            }
+            if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: errorData) {
+                throw AIError.apiError(errorResponse.error.message)
+            }
+            throw AIError.httpError(httpResponse.statusCode)
+        }
+
+        // Parse SSE stream
+        for try await line in bytes.lines {
+            // Skip empty lines and comments
+            guard line.hasPrefix("data: ") else { continue }
+
+            let data = String(line.dropFirst(6))
+
+            // Check for end of stream
+            if data == "[DONE]" { break }
+
+            // Parse JSON
+            guard let jsonData = data.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let firstChoice = choices.first,
+                  let delta = firstChoice["delta"] as? [String: Any],
+                  let content = delta["content"] as? String else {
+                continue
+            }
+
+            await MainActor.run {
+                onChunk(content)
+            }
+        }
+    }
+
+    // MARK: - Anthropic Streaming
+    private func streamAnthropicChat(
+        messages: [(role: String, content: String)],
+        apiKey: String,
+        model: AIModel,
+        onChunk: @escaping (String) -> Void
+    ) async throws {
+        let url = URL(string: AIProvider.anthropic.baseURL)!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.addValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Convert messages to Anthropic format
+        var apiMessages: [[String: String]] = []
+        for message in messages {
+            apiMessages.append(["role": message.role, "content": message.content])
+        }
+
+        let body: [String: Any] = [
+            "model": model.id,
+            "max_tokens": 4000,
+            "system": "You are a helpful AI assistant. Be concise and helpful. Use markdown formatting when appropriate, including code blocks with language tags for code.",
+            "messages": apiMessages,
+            "stream": true
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIError.invalidResponse
+        }
+
+        if httpResponse.statusCode != 200 {
+            // Collect error response
+            var errorData = Data()
+            for try await byte in bytes {
+                errorData.append(byte)
+            }
+            if let errorResponse = try? JSONDecoder().decode(AnthropicErrorResponse.self, from: errorData) {
+                throw AIError.apiError(errorResponse.error.message)
+            }
+            throw AIError.httpError(httpResponse.statusCode)
+        }
+
+        // Parse SSE stream for Anthropic
+        for try await line in bytes.lines {
+            // Skip empty lines
+            guard line.hasPrefix("data: ") else { continue }
+
+            let data = String(line.dropFirst(6))
+
+            // Parse JSON
+            guard let jsonData = data.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+                continue
+            }
+
+            // Check event type
+            let eventType = json["type"] as? String
+
+            // Handle content_block_delta events
+            if eventType == "content_block_delta",
+               let delta = json["delta"] as? [String: Any],
+               let text = delta["text"] as? String {
+                await MainActor.run {
+                    onChunk(text)
+                }
+            }
+
+            // Check for message_stop
+            if eventType == "message_stop" {
+                break
+            }
+        }
+    }
+
     // MARK: - OpenAI Compatible Chat
     private func callOpenAICompatibleChat(messages: [(role: String, content: String)], apiKey: String, provider: AIProvider, model: AIModel) async throws -> String {
         let url = URL(string: provider.baseURL)!

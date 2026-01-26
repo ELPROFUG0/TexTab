@@ -11,15 +11,20 @@ import Carbon.HIToolbox
 // MARK: - Chat Message Model
 
 struct ChatMessage: Identifiable, Equatable {
-    let id = UUID()
-    let content: String
+    let id: UUID
+    var content: String
     let isUser: Bool
     let timestamp: Date
 
     init(content: String, isUser: Bool) {
+        self.id = UUID()
         self.content = content
         self.isUser = isUser
         self.timestamp = Date()
+    }
+
+    static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
+        lhs.id == rhs.id && lhs.content == rhs.content
     }
 }
 
@@ -31,6 +36,7 @@ struct ChatView: View {
     @State private var messages: [ChatMessage] = []
     @State private var inputText: String = ""
     @State private var isProcessing: Bool = false
+    @State private var streamingMessageId: UUID? = nil
     @FocusState private var isInputFocused: Bool
 
     var onClose: () -> Void
@@ -252,30 +258,42 @@ struct ChatView: View {
         messages.append(userMessage)
         inputText = ""
 
-        // Process with AI
+        // Create empty AI message for streaming
+        let aiMessage = ChatMessage(content: "", isUser: false)
+        messages.append(aiMessage)
+        streamingMessageId = aiMessage.id
+
+        // Process with AI using streaming
         isProcessing = true
 
         Task {
             do {
-                // Build conversation context
+                // Build conversation context (exclude the empty AI message)
                 let conversationContext = buildConversationContext()
 
-                let response = try await AIService.shared.chat(
+                try await AIService.shared.chatStream(
                     messages: conversationContext,
                     apiKey: store.apiKey,
                     provider: store.selectedProvider,
                     model: store.selectedModel
-                )
+                ) { chunk in
+                    // Append chunk to the streaming message
+                    if let index = messages.firstIndex(where: { $0.id == streamingMessageId }) {
+                        messages[index].content += chunk
+                    }
+                }
 
                 await MainActor.run {
-                    let aiMessage = ChatMessage(content: response, isUser: false)
-                    messages.append(aiMessage)
+                    streamingMessageId = nil
                     isProcessing = false
                 }
             } catch {
                 await MainActor.run {
-                    let errorMessage = ChatMessage(content: "Error: \(error.localizedDescription)", isUser: false)
-                    messages.append(errorMessage)
+                    // Update the streaming message with error
+                    if let index = messages.firstIndex(where: { $0.id == streamingMessageId }) {
+                        messages[index].content = "Error: \(error.localizedDescription)"
+                    }
+                    streamingMessageId = nil
                     isProcessing = false
                 }
             }
@@ -286,6 +304,11 @@ struct ChatView: View {
         var context: [(role: String, content: String)] = []
 
         for message in messages {
+            // Skip the empty streaming message
+            if message.id == streamingMessageId { continue }
+            // Skip empty messages
+            if message.content.isEmpty { continue }
+
             context.append((
                 role: message.isUser ? "user" : "assistant",
                 content: message.content
