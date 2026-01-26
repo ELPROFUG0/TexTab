@@ -57,6 +57,9 @@ struct PopoverView: View {
     @State private var convertedImageData: Data?
     @State private var showImageConverter = false
 
+    // Chat state
+    @State private var showChat = false
+
     var onClose: () -> Void
     var onOpenSettings: () -> Void
     var initialAction: Action?
@@ -73,35 +76,44 @@ struct PopoverView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if showImageConverter, let action = activeAction {
-                // Image converter view
-                imageConverterView(action: action)
-            } else if let image = resultImage, let action = activeAction {
-                // Image result view (for plugins like QR generator)
-                imageResultView(image: image, action: action)
-            } else if let result = resultText, let action = activeAction {
-                // Text result view
-                resultView(result: result, action: action)
-            } else if let action = activeAction, isProcessing {
-                // Loading view with skeleton
-                loadingView(action: action)
-            } else if let action = initialAction, activeAction == nil {
-                // Initial loading state when action is provided but not yet started
-                loadingView(action: action)
-            } else if initialAction == nil {
-                // Main popup view (only when no initial action)
-                mainView
+        Group {
+            if showChat {
+                // Chat view
+                ChatView(onClose: {
+                    showChat = false
+                })
+            } else {
+                VStack(spacing: 0) {
+                    if showImageConverter, let action = activeAction {
+                        // Image converter view
+                        imageConverterView(action: action)
+                    } else if let image = resultImage, let action = activeAction {
+                        // Image result view (for plugins like QR generator)
+                        imageResultView(image: image, action: action)
+                    } else if let result = resultText, let action = activeAction {
+                        // Text result view
+                        resultView(result: result, action: action)
+                    } else if let action = activeAction, isProcessing {
+                        // Loading view with skeleton
+                        loadingView(action: action)
+                    } else if let action = initialAction, activeAction == nil {
+                        // Initial loading state when action is provided but not yet started
+                        loadingView(action: action)
+                    } else if initialAction == nil {
+                        // Main popup view (only when no initial action)
+                        mainView
+                    }
+                }
+                .frame(width: popoverWidth)
+                .background(Color(NSColor.windowBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
             }
         }
-        .frame(width: popoverWidth)
-        .background(Color(NSColor.windowBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
         .onAppear {
             // Reset all states when popup appears
             clipboardImage = nil
@@ -125,6 +137,14 @@ struct PopoverView: View {
 
     var mainView: some View {
         VStack(spacing: 0) {
+            // Chat button
+            ChatButtonView(onTap: {
+                showChat = true
+            })
+            .padding(.horizontal, 10)
+            .padding(.top, 10)
+            .padding(.bottom, 4)
+
             // Search bar
             SearchBarView(
                 searchText: $searchText,
@@ -132,7 +152,6 @@ struct PopoverView: View {
                 onSubmit: selectCurrentAction
             )
             .padding(.horizontal, 10)
-            .padding(.top, 10)
             .padding(.bottom, 6)
             .onAppear {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -1181,6 +1200,51 @@ struct SearchBarView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(backgroundColor)
         )
+    }
+}
+
+// MARK: - Chat Button View
+
+struct ChatButtonView: View {
+    @Environment(\.colorScheme) var colorScheme
+    var onTap: () -> Void
+
+    private var appBlue: Color {
+        Color(red: 0.0, green: 0.584, blue: 1.0)
+    }
+
+    var backgroundColor: Color {
+        colorScheme == .light
+            ? Color(red: 241/255, green: 241/255, blue: 239/255)
+            : Color(white: 1).opacity(0.1)
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 10) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .foregroundColor(appBlue)
+                    .font(.system(size: 14))
+
+                Text("Chat with AI")
+                    .font(.nunitoRegularBold(size: 14))
+                    .foregroundColor(.gray)
+
+                Spacer()
+
+                Image(systemName: "arrow.right.circle.fill")
+                    .foregroundColor(appBlue.opacity(0.6))
+                    .font(.system(size: 16))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(backgroundColor)
+            )
+        }
+        .buttonStyle(.plain)
+        .pointerCursor()
     }
 }
 

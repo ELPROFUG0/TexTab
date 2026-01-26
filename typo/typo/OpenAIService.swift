@@ -202,6 +202,120 @@ class AIService {
         }
     }
 
+    // MARK: - Chat (Multi-turn conversation)
+    func chat(messages: [(role: String, content: String)], apiKey: String, provider: AIProvider, model: AIModel) async throws -> String {
+        guard !apiKey.isEmpty else {
+            return "[Demo Mode] API key not configured. Go to Settings to add your API key."
+        }
+
+        switch provider {
+        case .anthropic:
+            return try await callAnthropicChat(messages: messages, apiKey: apiKey, model: model)
+        default:
+            return try await callOpenAICompatibleChat(messages: messages, apiKey: apiKey, provider: provider, model: model)
+        }
+    }
+
+    // MARK: - OpenAI Compatible Chat
+    private func callOpenAICompatibleChat(messages: [(role: String, content: String)], apiKey: String, provider: AIProvider, model: AIModel) async throws -> String {
+        let url = URL(string: provider.baseURL)!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if provider == .openrouter {
+            request.addValue("TexTab App", forHTTPHeaderField: "X-Title")
+        }
+
+        // Convert messages to API format
+        var apiMessages: [[String: String]] = [
+            ["role": "system", "content": "You are a helpful AI assistant. Be concise and helpful. Use markdown formatting when appropriate, including code blocks with language tags for code."]
+        ]
+
+        for message in messages {
+            apiMessages.append(["role": message.role, "content": message.content])
+        }
+
+        let body: [String: Any] = [
+            "model": model.id,
+            "messages": apiMessages,
+            "max_tokens": 4000,
+            "temperature": 0.7
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIError.invalidResponse
+        }
+
+        if httpResponse.statusCode != 200 {
+            if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: data) {
+                throw AIError.apiError(errorResponse.error.message)
+            }
+            throw AIError.httpError(httpResponse.statusCode)
+        }
+
+        let decoded = try JSONDecoder().decode(OpenAIResponse.self, from: data)
+
+        guard let content = decoded.choices.first?.message.content else {
+            throw AIError.noContent
+        }
+
+        return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - Anthropic Chat
+    private func callAnthropicChat(messages: [(role: String, content: String)], apiKey: String, model: AIModel) async throws -> String {
+        let url = URL(string: AIProvider.anthropic.baseURL)!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.addValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Convert messages to Anthropic format
+        var apiMessages: [[String: String]] = []
+        for message in messages {
+            apiMessages.append(["role": message.role, "content": message.content])
+        }
+
+        let body: [String: Any] = [
+            "model": model.id,
+            "max_tokens": 4000,
+            "system": "You are a helpful AI assistant. Be concise and helpful. Use markdown formatting when appropriate, including code blocks with language tags for code.",
+            "messages": apiMessages
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AIError.invalidResponse
+        }
+
+        if httpResponse.statusCode != 200 {
+            if let errorResponse = try? JSONDecoder().decode(AnthropicErrorResponse.self, from: data) {
+                throw AIError.apiError(errorResponse.error.message)
+            }
+            throw AIError.httpError(httpResponse.statusCode)
+        }
+
+        let decoded = try JSONDecoder().decode(AnthropicResponse.self, from: data)
+
+        guard let content = decoded.content.first?.text else {
+            throw AIError.noContent
+        }
+
+        return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     // MARK: - Web Search using Perplexity
     func webSearch(prompt: String, query: String, apiKey: String) async throws -> String {
         guard !apiKey.isEmpty else {
