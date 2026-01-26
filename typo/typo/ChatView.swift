@@ -57,8 +57,6 @@ struct ChatView: View {
             // Header
             chatHeader
 
-            Divider()
-
             // Messages area
             messagesArea
 
@@ -91,9 +89,10 @@ struct ChatView: View {
     private var chatHeader: some View {
         HStack {
             HStack(spacing: 8) {
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(appBlue)
+                Image("logo textab")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 20, height: 20)
 
                 Text("AI Chat")
                     .font(.nunitoBold(size: 15))
@@ -161,12 +160,10 @@ struct ChatView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             Spacer()
 
-            Image(systemName: "sparkles")
-                .font(.system(size: 40))
-                .foregroundColor(appBlue.opacity(0.6))
+            AnimatedCatLogo(subtitle: "", linkURL: nil, scale: 1.8)
 
             Text("Start a conversation")
                 .font(.nunitoBold(size: 16))

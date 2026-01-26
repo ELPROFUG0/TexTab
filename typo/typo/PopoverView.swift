@@ -1230,9 +1230,10 @@ struct ChatButtonView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 10) {
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .foregroundColor(appBlue)
-                    .font(.system(size: 14))
+                Image("logo textab")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 18, height: 18)
 
                 Text("Chat with AI")
                     .font(.nunitoRegularBold(size: 14))
