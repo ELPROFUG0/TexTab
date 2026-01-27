@@ -2095,18 +2095,11 @@ struct AboutView: View {
     @Environment(\.colorScheme) var colorScheme
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var actionsStore = ActionsStore.shared
-    @State private var mousePosition: CGPoint = .zero
-    @State private var isHovering: Bool = false
     @State private var showPaywall: Bool = false
 
     // App accent blue color
     private var appBlue: Color {
         Color(red: 0.0, green: 0.584, blue: 1.0)
-    }
-
-    // Card color - #FBBAC4 (pink from onboarding)
-    private var cardColor: Color {
-        Color(hex: "FBBAC4")
     }
 
     // Number of actions
@@ -2146,165 +2139,76 @@ struct AboutView: View {
 
     var body: some View {
         HStack(spacing: 30) {
-            // Left side - Membership Style Parallax Card
-            GeometryReader { geometry in
-                let centerX = geometry.size.width / 2
-                let centerY = geometry.size.height / 2
+            // Left side - App Logo with stats
+            VStack(spacing: 16) {
+                Spacer()
 
-                // Calculate rotation based on mouse position
-                let rotateX = isHovering ? (mousePosition.y - centerY) / 18 : 0
-                let rotateY = isHovering ? -(mousePosition.x - centerX) / 18 : 0
+                // App Logo
+                Image("logo textab")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 140, height: 140)
 
-                ZStack {
-                    // Main Card
-                    ZStack {
-                        // Card background - solid color #00A1FF
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(cardColor)
+                // Member since
+                VStack(spacing: 2) {
+                    Text("MEMBER SINCE")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.6))
+                        .tracking(1.5)
 
-                        // Card content - all elements move with the card
-                        VStack(alignment: .leading, spacing: 0) {
-                            // Top section - Member info
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text("MEMBER SINCE")
-                                        .font(.system(size: 7, weight: .semibold))
-                                        .foregroundColor(.white.opacity(0.5))
-                                        .tracking(1.0)
+                    Text(memberSinceDate)
+                        .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.primary)
+                }
 
-                                    Text(memberSinceDate)
-                                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                                        .foregroundColor(.white)
-                                }
+                // Stats row
+                HStack(spacing: 30) {
+                    // Actions
+                    VStack(spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "laurel.leading")
+                                .font(.system(size: 20))
+                                .foregroundColor(.secondary.opacity(0.5))
 
-                                Spacer()
+                            Text("\(actionsCount)")
+                                .font(.nunitoBlack(size: 28))
+                                .foregroundColor(.primary)
 
-                                // Pro fingerprint icon
-                                Image(systemName: "touchid")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.8))
-                            }
-                            .padding(.horizontal, 18)
-                            .padding(.top, 18)
-
-                            Spacer()
-
-                            // Center - Title/Rank with decorative element
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text("TexTab")
-                                    .font(.nunitoBlack(size: 36))
-                                    .foregroundColor(.white)
-
-                                Text("Pro")
-                                    .font(.nunitoBlack(size: 36))
-                                    .foregroundColor(.white.opacity(0.9))
-                            }
-                            .padding(.horizontal, 18)
-
-                            Spacer()
-
-                            // Bottom section - Stats
-                            VStack(spacing: 10) {
-                                // Separator line
-                                Rectangle()
-                                    .fill(Color.white.opacity(0.2))
-                                    .frame(height: 1)
-
-                                // Stats row
-                                HStack(spacing: 0) {
-                                    // Typos fixed
-                                    VStack(spacing: 4) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "laurel.leading")
-                                                .font(.system(size: 18))
-                                                .foregroundColor(.white.opacity(0.7))
-
-                                            Text("\(actionsCount)")
-                                                .font(.nunitoBlack(size: 24))
-                                                .foregroundColor(.white)
-
-                                            Image(systemName: "laurel.trailing")
-                                                .font(.system(size: 18))
-                                                .foregroundColor(.white.opacity(0.7))
-                                        }
-
-                                        Text("Actions")
-                                            .font(.system(size: 10, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.6))
-                                    }
-                                    .frame(maxWidth: .infinity)
-
-                                    // Divider
-                                    Rectangle()
-                                        .fill(Color.white.opacity(0.2))
-                                        .frame(width: 1, height: 45)
-
-                                    // Days active
-                                    VStack(spacing: 4) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "laurel.leading")
-                                                .font(.system(size: 18))
-                                                .foregroundColor(.white.opacity(0.7))
-
-                                            Text("\(daysSinceCreation)")
-                                                .font(.nunitoBlack(size: 24))
-                                                .foregroundColor(.white)
-
-                                            Image(systemName: "laurel.trailing")
-                                                .font(.system(size: 18))
-                                                .foregroundColor(.white.opacity(0.7))
-                                        }
-
-                                        Text("Days")
-                                            .font(.system(size: 10, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.6))
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                }
-
-                                // Bottom separator line
-                                Rectangle()
-                                    .fill(Color.white.opacity(0.2))
-                                    .frame(height: 1)
-                            }
-                            .padding(.horizontal, 18)
-                            .padding(.bottom, 18)
+                            Image(systemName: "laurel.trailing")
+                                .font(.system(size: 20))
+                                .foregroundColor(.secondary.opacity(0.5))
                         }
 
-                        // Subtle inner border
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        Text("Actions")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
-                    .frame(width: 240, height: 340)
-                    .rotation3DEffect(
-                        .degrees(Double(rotateX)),
-                        axis: (x: 1, y: 0, z: 0),
-                        perspective: 0.5
-                    )
-                    .rotation3DEffect(
-                        .degrees(Double(rotateY)),
-                        axis: (x: 0, y: 1, z: 0),
-                        perspective: 0.5
-                    )
-                    .scaleEffect(isHovering ? 1.04 : 1.0)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isHovering)
-                    .animation(.spring(response: 0.15, dampingFraction: 0.8), value: mousePosition)
-                    .position(x: centerX, y: centerY)
-                }
-                .onContinuousHover { phase in
-                    switch phase {
-                    case .active(let location):
-                        mousePosition = location
-                        isHovering = true
-                    case .ended:
-                        isHovering = false
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                            mousePosition = CGPoint(x: centerX, y: centerY)
+
+                    // Days
+                    VStack(spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "laurel.leading")
+                                .font(.system(size: 20))
+                                .foregroundColor(.secondary.opacity(0.5))
+
+                            Text("\(daysSinceCreation)")
+                                .font(.nunitoBlack(size: 28))
+                                .foregroundColor(.primary)
+
+                            Image(systemName: "laurel.trailing")
+                                .font(.system(size: 20))
+                                .foregroundColor(.secondary.opacity(0.5))
                         }
+
+                        Text("Days")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
                 }
+
+                Spacer()
             }
-            .frame(width: 280)
+            .frame(width: 220)
 
             // Right side - Account info and Buttons
             VStack(alignment: .leading, spacing: 0) {
