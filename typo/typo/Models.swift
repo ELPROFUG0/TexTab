@@ -255,10 +255,11 @@ class ActionsStore: ObservableObject {
 
     func loadActions() {
         if let data = UserDefaults.standard.data(forKey: actionsKey),
-           let decoded = try? JSONDecoder().decode([Action].self, from: data) {
+           let decoded = try? JSONDecoder().decode([Action].self, from: data),
+           !decoded.isEmpty {
             actions = decoded
         } else {
-            // Acciones por defecto
+            // Acciones por defecto (si no hay datos o el array está vacío)
             actions = Self.defaultActions
             saveActions()
         }
