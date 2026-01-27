@@ -276,52 +276,9 @@ struct LoginRequiredView: View {
                     .disabled(authManager.isLoading || email.isEmpty || password.isEmpty)
                     .opacity(email.isEmpty || password.isEmpty ? 0.6 : 1)
 
-                    // Divider with "or"
-                    HStack {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(height: 1)
-                        Text("or")
-                            .font(.nunitoRegularBold(size: 12))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 8)
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(height: 1)
-                    }
-                    .padding(.vertical, 4)
-
-                    // Google Sign In button
-                    Button(action: {
-                        authManager.signInWithGoogle()
-                    }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "g.circle.fill")
-                                .font(.system(size: 18))
-                            Text("Continue with Google")
-                                .font(.nunitoBold(size: 15))
-                        }
-                        .foregroundColor(.primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color(NSColor.controlBackgroundColor))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .pointerCursor()
-
-                    // Toggle sign up/sign in
-                    HStack(spacing: 4) {
-                        Text(isSignUp ? "Already have an account?" : "Don't have an account?")
-                            .font(.nunitoRegularBold(size: 13))
-                            .foregroundColor(.secondary)
-
+                    // Buttons row: Sign In/Up + Google
+                    HStack(spacing: 12) {
+                        // Toggle sign up/sign in button
                         Button(action: {
                             withAnimation {
                                 isSignUp.toggle()
@@ -329,8 +286,43 @@ struct LoginRequiredView: View {
                             }
                         }) {
                             Text(isSignUp ? "Sign In" : "Sign Up")
-                                .font(.nunitoBold(size: 13))
-                                .foregroundColor(appBlue)
+                                .font(.nunitoBold(size: 15))
+                                .foregroundColor(.primary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(NSColor.controlBackgroundColor))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .pointerCursor()
+
+                        // Google Sign In button
+                        Button(action: {
+                            authManager.signInWithGoogle()
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "g.circle.fill")
+                                    .font(.system(size: 18))
+                                Text("Google")
+                                    .font(.nunitoBold(size: 15))
+                            }
+                            .foregroundColor(.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color(NSColor.controlBackgroundColor))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
                         }
                         .buttonStyle(.plain)
                         .pointerCursor()
@@ -737,6 +729,49 @@ struct GeneralSettingsView: View {
                                 .background(
                                     Capsule()
                                         .fill(appBlue.opacity(0.15))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Divider()
+
+                // Developer Section (Testing)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Developer")
+                        .font(.nunitoBold(size: 18))
+                        .foregroundColor(.primary)
+
+                    HStack {
+                        HStack(spacing: 10) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.red)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Reset Onboarding")
+                                    .font(.nunitoRegularBold(size: 15))
+                                    .foregroundColor(.secondary)
+                                Text("Show onboarding screens again on next launch")
+                                    .font(.nunitoRegularBold(size: 12))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                            }
+                        }
+
+                        Spacer()
+
+                        Button(action: {
+                            OnboardingManager.shared.resetOnboarding()
+                            NSApp.terminate(nil)
+                        }) {
+                            Text("Reset & Quit")
+                                .font(.nunitoRegularBold(size: 13))
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.red.opacity(0.15))
                                 )
                         }
                         .buttonStyle(.plain)

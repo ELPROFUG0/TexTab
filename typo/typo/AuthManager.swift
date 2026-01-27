@@ -295,7 +295,14 @@ class AuthManager: ObservableObject {
     // MARK: - Open Stripe Payment
 
     func openStripePayment() {
-        if let url = URL(string: stripePaymentLink) {
+        // Build URL with prefilled email if user is logged in
+        var urlString = stripePaymentLink
+        if let email = currentUser?.email {
+            let encodedEmail = email.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? email
+            urlString += "?prefilled_email=\(encodedEmail)"
+        }
+
+        if let url = URL(string: urlString) {
             NSWorkspace.shared.open(url)
         }
     }

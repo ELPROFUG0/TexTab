@@ -97,6 +97,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+
+        // Handle payment success callback
+        if url.scheme == "textab" && url.host == "payment" && url.path == "/success" {
+            Task {
+                // Retry a few times with delay to wait for webhook to update database
+                for attempt in 1...5 {
+                    try? await Task.sleep(nanoseconds: UInt64(attempt) * 1_000_000_000) // 1s, 2s, 3s, 4s, 5s
+                    await AuthManager.shared.refreshSubscription()
+                    if AuthManager.shared.isPro {
+                        break
+                    }
+                }
+                await MainActor.run {
+                    self.openSettings()
+                    NotificationCenter.default.post(name: NSNotification.Name("PaymentSuccess"), object: nil)
+                }
+            }
+        }
     }
 
     func setupApp() {
@@ -622,7 +640,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func openSettings() {
         // Crear nueva ventana siempre para evitar problemas de memoria
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 540),
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 620),
             styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
