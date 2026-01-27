@@ -2274,7 +2274,7 @@ struct AboutView: View {
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primary)
 
-                            Text(authManager.isPro ? "View billing and manage plan" : "Unlimited actions • $14.99/year")
+                            Text(authManager.isPro ? "Manage your plan" : "Unlimited actions")
                                 .font(.system(size: 13))
                                 .foregroundColor(.secondary)
                         }
