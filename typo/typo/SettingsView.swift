@@ -867,8 +867,7 @@ struct ActionEditorView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 20) {
                         // Header with icon and name
                         HStack(spacing: 12) {
                             // Custom Icon Picker Button
@@ -964,7 +963,6 @@ struct ActionEditorView: View {
                                     .font(.nunitoRegularBold(size: 14))
                                     .foregroundColor(textGrayColor)
                                     .scrollContentBackground(.hidden)
-                                    .scrollDisabled(true)
                                     .background(Color.clear)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
@@ -972,7 +970,7 @@ struct ActionEditorView: View {
                                         hasUnsavedChanges = true
                                     }
                             }
-                            .frame(minHeight: 220)
+                            .frame(height: 220)
 
                             // Enhance button inside container
                             HStack {
@@ -1026,7 +1024,6 @@ struct ActionEditorView: View {
                     Spacer()
                 }
                 .padding(24)
-            }
 
                 // Footer with Delete and Saved buttons
                 HStack {
