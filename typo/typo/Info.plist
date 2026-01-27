@@ -12,7 +12,14 @@
 	<string>Fonts</string>
 	<key>CFBundleURLTypes</key>
 	<array>
-		<dict/>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.textab.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>textab</string>
+			</array>
+		</dict>
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>

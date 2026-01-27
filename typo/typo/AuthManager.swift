@@ -85,6 +85,9 @@ class AuthManager: ObservableObject {
     // Stripe Payment Link (Test Mode)
     let stripePaymentLink = "https://buy.stripe.com/test_dRm28qeFFc9P06x2ceejK00"
 
+    // OAuth redirect URI
+    private let redirectURI = "textab://auth/callback"
+
     // Published state
     @Published var isAuthenticated = false
     @Published var currentUser: SupabaseUser?
@@ -291,6 +294,82 @@ class AuthManager: ObservableObject {
         if let url = URL(string: stripePaymentLink) {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    // MARK: - Google Sign In
+
+    func signInWithGoogle() {
+        // Construct the OAuth URL for Supabase Google provider
+        var components = URLComponents(string: "\(supabaseURL)/auth/v1/authorize")!
+        components.queryItems = [
+            URLQueryItem(name: "provider", value: "google"),
+            URLQueryItem(name: "redirect_to", value: redirectURI)
+        ]
+
+        if let url = components.url {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    // Handle OAuth callback URL
+    func handleOAuthCallback(url: URL) async throws {
+        // Parse the URL to extract tokens
+        // Supabase redirects with fragment: textab://auth/callback#access_token=...&refresh_token=...
+        guard let fragment = url.fragment else {
+            throw AuthError.invalidResponse
+        }
+
+        // Parse fragment parameters
+        var params: [String: String] = [:]
+        let pairs = fragment.split(separator: "&")
+        for pair in pairs {
+            let keyValue = pair.split(separator: "=", maxSplits: 1)
+            if keyValue.count == 2 {
+                let key = String(keyValue[0])
+                let value = String(keyValue[1]).removingPercentEncoding ?? String(keyValue[1])
+                params[key] = value
+            }
+        }
+
+        guard let accessToken = params["access_token"],
+              let refreshToken = params["refresh_token"] else {
+            throw AuthError.invalidResponse
+        }
+
+        // Get user info from the access token
+        guard let url = URL(string: "\(supabaseURL)/auth/v1/user") else {
+            throw AuthError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue(supabaseAnonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw AuthError.invalidResponse
+        }
+
+        let user = try JSONDecoder().decode(SupabaseUser.self, from: data)
+
+        await MainActor.run {
+            // Save session manually since we have the tokens directly
+            self.accessToken = accessToken
+            self.currentUser = user
+            self.isAuthenticated = true
+
+            UserDefaults.standard.set(accessToken, forKey: accessTokenKey)
+            UserDefaults.standard.set(refreshToken, forKey: refreshTokenKey)
+            UserDefaults.standard.set(user.id, forKey: userIdKey)
+            UserDefaults.standard.set(user.email, forKey: userEmailKey)
+
+            // Reload actions after login
+            ActionsStore.shared.loadActions()
+        }
+
+        // Fetch subscription status after login
+        try await fetchSubscriptionStatus()
     }
 
     // MARK: - Password Reset

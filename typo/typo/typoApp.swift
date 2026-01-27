@@ -60,11 +60,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         globalAppDelegate = self
         registerCustomFonts()
 
+        // Register for URL scheme handling
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleURLEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
+
         // Check if onboarding is needed
         if !OnboardingManager.shared.hasCompletedOnboarding {
             showOnboarding()
         } else {
             setupApp()
+        }
+    }
+
+    @objc func handleURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent replyEvent: NSAppleEventDescriptor) {
+        guard let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
+              let url = URL(string: urlString) else {
+            return
+        }
+
+        // Handle OAuth callback
+        if url.scheme == "textab" && url.host == "auth" {
+            Task {
+                do {
+                    try await AuthManager.shared.handleOAuthCallback(url: url)
+                    await MainActor.run {
+                        // Open settings to show the user they're logged in
+                        self.openSettings()
+                        NotificationCenter.default.post(name: NSNotification.Name("OAuthLoginSuccess"), object: nil)
+                    }
+                } catch {
+                    print("OAuth callback error: \(error)")
+                    await MainActor.run {
+                        AuthManager.shared.errorMessage = error.localizedDescription
+                        // Still open settings to show the error
+                        self.openSettings()
+                    }
+                }
+            }
         }
     }
 
