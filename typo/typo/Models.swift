@@ -216,6 +216,19 @@ class ActionsStore: ObservableObject {
         return AIModel.defaultModel(for: selectedProvider)
     }
 
+    // Free tier limit: 5 actions max
+    static let freeActionLimit = 5
+
+    // Check if user can create a new action
+    var canCreateAction: Bool {
+        AuthManager.shared.isPro || actions.count < Self.freeActionLimit
+    }
+
+    // Number of remaining actions for free users
+    var remainingFreeActions: Int {
+        max(0, Self.freeActionLimit - actions.count)
+    }
+
     var mainCarbonModifiers: UInt32 {
         var mods: UInt32 = 0
         for m in mainShortcutModifiers {

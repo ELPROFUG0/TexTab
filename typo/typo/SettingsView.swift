@@ -76,6 +76,11 @@ struct SettingsView: View {
                         selectedTab = 4
                     }
                 }
+                TabTextButton(title: "Account", isSelected: selectedTab == 5) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedTab = 5
+                    }
+                }
             }
             .padding(.vertical, 12)
 
@@ -99,6 +104,8 @@ struct SettingsView: View {
                     PluginsMarketplaceView()
                 case 4:
                     AboutView()
+                case 5:
+                    AccountView()
                 default:
                     EmptyView()
                 }
@@ -666,6 +673,7 @@ struct SpecsBar: View {
 struct ActionsSettingsView: View {
     @StateObject private var store = ActionsStore.shared
     @Binding var selectedAction: Action?
+    @State private var showPaywall = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -773,9 +781,16 @@ struct ActionsSettingsView: View {
                 .background(Color(NSColor.windowBackgroundColor))
             }
         }
+        .paywall(isPresented: $showPaywall)
     }
 
     func addNewAction() {
+        // Check if user can create a new action
+        guard store.canCreateAction else {
+            showPaywall = true
+            return
+        }
+
         let newAction = Action(
             name: "",
             icon: "star",
@@ -2851,6 +2866,7 @@ struct TemplatesView: View {
     @StateObject private var store = ActionsStore.shared
     @State private var selectedCategory: PromptCategory? = nil
     @State private var addedTemplateId: UUID? = nil
+    @State private var showPaywall = false
     var onNavigateToActions: (Action) -> Void
 
     var filteredTemplates: [PromptSuggestion] {
@@ -2873,6 +2889,12 @@ struct TemplatesView: View {
     }
 
     func addTemplateToActions(_ template: PromptSuggestion) {
+        // Check if user can create a new action
+        guard store.canCreateAction else {
+            showPaywall = true
+            return
+        }
+
         let newAction = Action(
             name: template.name,
             icon: template.icon,
@@ -2964,6 +2986,7 @@ struct TemplatesView: View {
             }
         }
         .background(Color(NSColor.windowBackgroundColor))
+        .paywall(isPresented: $showPaywall)
     }
 }
 
