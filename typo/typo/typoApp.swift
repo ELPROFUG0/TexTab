@@ -330,48 +330,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func statusBarButtonClicked(_ sender: NSStatusBarButton) {
-        let event = NSApp.currentEvent!
-
-        if event.type == .rightMouseUp {
-            // Click derecho: mostrar menú estándar
-            let menu = NSMenu()
-
-            let openItem = NSMenuItem(title: "Open TexTab", action: #selector(showPopover), keyEquivalent: "")
-            openItem.target = self
-            menu.addItem(openItem)
-
-            let settingsItem = NSMenuItem(title: "Settings", action: #selector(openSettings), keyEquivalent: ",")
-            settingsItem.target = self
-            menu.addItem(settingsItem)
-
-            menu.addItem(NSMenuItem.separator())
-
-            let quitItem = NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q")
-            quitItem.target = self
-            menu.addItem(quitItem)
-
-            statusItem?.menu = menu
-            statusItem?.button?.performClick(nil)
-            statusItem?.menu = nil
+        // Mostrar menú personalizado animado (para clic izquierdo y derecho)
+        if menuBarMenuController.isMenuVisible {
+            menuBarMenuController.closeMenu()
         } else {
-            // Click izquierdo: mostrar menú personalizado animado
-            if menuBarMenuController.isMenuVisible {
-                menuBarMenuController.closeMenu()
-            } else {
-                guard let statusItem = statusItem else { return }
-                menuBarMenuController.showMenu(
-                    relativeTo: statusItem,
-                    onOpenTexTab: { [weak self] in
-                        self?.showPopover()
-                    },
-                    onSettings: { [weak self] in
-                        self?.openSettings()
-                    },
-                    onQuit: { [weak self] in
-                        self?.quitApp()
-                    }
-                )
-            }
+            guard let statusItem = statusItem else { return }
+            menuBarMenuController.showMenu(
+                relativeTo: statusItem,
+                onOpenTexTab: { [weak self] in
+                    self?.showPopover()
+                },
+                onSettings: { [weak self] in
+                    self?.openSettings()
+                },
+                onQuit: { [weak self] in
+                    self?.quitApp()
+                }
+            )
         }
     }
 

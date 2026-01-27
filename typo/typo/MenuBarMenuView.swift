@@ -37,10 +37,9 @@ struct MenuBarMenuView: View {
         VStack(spacing: 0) {
             // Menu items
             VStack(spacing: 2) {
-                MenuBarMenuItem(
-                    icon: "rectangle.stack",
+                MenuBarMenuItemWithAsset(
+                    assetName: "MenuBarIcon",
                     title: "Open TexTab",
-                    shortcut: "⌥T",
                     isHovered: hoveredItem == "open",
                     isDarkMode: isDarkMode,
                     delay: 0.05
@@ -54,7 +53,6 @@ struct MenuBarMenuView: View {
                 MenuBarMenuItem(
                     icon: "gearshape",
                     title: "Settings",
-                    shortcut: "⌘,",
                     isHovered: hoveredItem == "settings",
                     isDarkMode: isDarkMode,
                     delay: 0.1
@@ -77,7 +75,6 @@ struct MenuBarMenuView: View {
                 MenuBarMenuItem(
                     icon: "power",
                     title: "Quit",
-                    shortcut: "⌘Q",
                     isHovered: hoveredItem == "quit",
                     isDarkMode: isDarkMode,
                     isDestructive: true,
@@ -92,7 +89,7 @@ struct MenuBarMenuView: View {
             .padding(.vertical, 6)
             .padding(.horizontal, 4)
         }
-        .frame(width: 200)
+        .frame(width: 170)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(backgroundColor)
@@ -124,7 +121,6 @@ struct MenuBarMenuView: View {
 struct MenuBarMenuItem: View {
     let icon: String
     let title: String
-    let shortcut: String
     let isHovered: Bool
     let isDarkMode: Bool
     var isDestructive: Bool = false
@@ -145,13 +141,6 @@ struct MenuBarMenuItem: View {
             return .white
         }
         return isDarkMode ? Color(white: 0.7) : Color(white: 0.4)
-    }
-
-    var shortcutColor: Color {
-        if isDestructive && isHovered {
-            return .white.opacity(0.7)
-        }
-        return Color.gray.opacity(0.6)
     }
 
     var hoverBackground: Color {
@@ -176,10 +165,77 @@ struct MenuBarMenuItem: View {
                     .foregroundColor(textColor)
 
                 Spacer()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered ? hoverBackground : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .offset(y: isVisible ? 0 : -8)
+        .opacity(isVisible ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7).delay(delay)) {
+                isVisible = true
+            }
+        }
+    }
+}
 
-                Text(shortcut)
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundColor(shortcutColor)
+// Menu item with asset image instead of SF Symbol
+struct MenuBarMenuItemWithAsset: View {
+    let assetName: String
+    let title: String
+    let isHovered: Bool
+    let isDarkMode: Bool
+    var isDestructive: Bool = false
+    let delay: Double
+    let action: () -> Void
+
+    @State private var isVisible = false
+
+    var textColor: Color {
+        if isDestructive && isHovered {
+            return .white
+        }
+        return isDarkMode ? .white : Color(white: 0.15)
+    }
+
+    var iconColor: Color {
+        if isDestructive && isHovered {
+            return .white
+        }
+        return isDarkMode ? Color(white: 0.7) : Color(white: 0.4)
+    }
+
+    var hoverBackground: Color {
+        if isDestructive {
+            return Color.red.opacity(0.85)
+        }
+        return isDarkMode
+            ? Color.white.opacity(0.1)
+            : Color.black.opacity(0.06)
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(assetName)
+                    .resizable()
+                    .renderingMode(.template)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 14, height: 14)
+                    .foregroundColor(iconColor)
+                    .frame(width: 18)
+
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(textColor)
+
+                Spacer()
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
