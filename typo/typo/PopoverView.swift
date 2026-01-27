@@ -1748,12 +1748,12 @@ struct CopyNotificationView: View {
         .background(
             RoundedRectangle(cornerRadius: 24)
                 .fill(Color(NSColor.windowBackgroundColor))
-                .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 4)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 24)
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
         )
+        .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 4)
         .fixedSize()
     }
 }
