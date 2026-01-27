@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import AppKit
+import CryptoKit
 
 // MARK: - Supabase Auth Models
 
@@ -85,8 +86,11 @@ class AuthManager: ObservableObject {
     // Stripe Payment Link (Test Mode)
     let stripePaymentLink = "https://buy.stripe.com/test_dRm28qeFFc9P06x2ceejK00"
 
-    // OAuth redirect URI
-    private let redirectURI = "textab://auth/callback"
+    // OAuth redirect URI - GitHub Pages callback page
+    private let redirectURI = "https://elprofug0.github.io/textab-auth/auth/callback.html"
+
+    // PKCE code verifier key
+    private let codeVerifierKey = "typo_code_verifier"
 
     // Published state
     @Published var isAuthenticated = false
@@ -296,14 +300,24 @@ class AuthManager: ObservableObject {
         }
     }
 
-    // MARK: - Google Sign In
+    // MARK: - Google Sign In (PKCE Flow)
 
     func signInWithGoogle() {
-        // Construct the OAuth URL for Supabase Google provider
+        // Generate PKCE code verifier (random 32 bytes, base64url encoded)
+        let verifier = generateCodeVerifier()
+        // Store verifier for later use when exchanging the code
+        UserDefaults.standard.set(verifier, forKey: codeVerifierKey)
+
+        // Generate code challenge (SHA256 hash of verifier, base64url encoded)
+        let challenge = generateCodeChallenge(from: verifier)
+
+        // Construct the OAuth URL for Supabase Google provider with PKCE
         var components = URLComponents(string: "\(supabaseURL)/auth/v1/authorize")!
         components.queryItems = [
             URLQueryItem(name: "provider", value: "google"),
-            URLQueryItem(name: "redirect_to", value: redirectURI)
+            URLQueryItem(name: "redirect_to", value: redirectURI),
+            URLQueryItem(name: "code_challenge", value: challenge),
+            URLQueryItem(name: "code_challenge_method", value: "S256")
         ]
 
         if let url = components.url {
@@ -311,64 +325,74 @@ class AuthManager: ObservableObject {
         }
     }
 
-    // Handle OAuth callback URL
+    // Generate a random code verifier for PKCE (43-128 chars, base64url)
+    private func generateCodeVerifier() -> String {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        return Data(bytes).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    // Generate code challenge from verifier using SHA256
+    private func generateCodeChallenge(from verifier: String) -> String {
+        let data = Data(verifier.utf8)
+        let hash = SHA256.hash(data: data)
+        return Data(hash).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    // Handle OAuth callback URL (PKCE flow)
     func handleOAuthCallback(url: URL) async throws {
-        // Parse the URL to extract tokens
-        // Supabase redirects with fragment: textab://auth/callback#access_token=...&refresh_token=...
-        guard let fragment = url.fragment else {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let code = components.queryItems?.first(where: { $0.name == "code" })?.value else {
             throw AuthError.invalidResponse
         }
 
-        // Parse fragment parameters
-        var params: [String: String] = [:]
-        let pairs = fragment.split(separator: "&")
-        for pair in pairs {
-            let keyValue = pair.split(separator: "=", maxSplits: 1)
-            if keyValue.count == 2 {
-                let key = String(keyValue[0])
-                let value = String(keyValue[1]).removingPercentEncoding ?? String(keyValue[1])
-                params[key] = value
-            }
+        guard let verifier = UserDefaults.standard.string(forKey: codeVerifierKey) else {
+            throw AuthError.serverError("Missing code verifier")
         }
 
-        guard let accessToken = params["access_token"],
-              let refreshToken = params["refresh_token"] else {
-            throw AuthError.invalidResponse
-        }
-
-        // Get user info from the access token
-        guard let url = URL(string: "\(supabaseURL)/auth/v1/user") else {
+        guard let tokenURL = URL(string: "\(supabaseURL)/auth/v1/token?grant_type=pkce") else {
             throw AuthError.invalidURL
         }
 
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: tokenURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(supabaseAnonKey, forHTTPHeaderField: "apikey")
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        let body: [String: String] = [
+            "auth_code": code,
+            "code_verifier": verifier
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw AuthError.invalidResponse
         }
 
-        let user = try JSONDecoder().decode(SupabaseUser.self, from: data)
+        if httpResponse.statusCode != 200 {
+            if let errorResponse = try? JSONDecoder().decode(SupabaseError.self, from: data) {
+                throw AuthError.serverError(errorResponse.displayMessage)
+            }
+            throw AuthError.httpError(httpResponse.statusCode)
+        }
+
+        UserDefaults.standard.removeObject(forKey: codeVerifierKey)
+
+        let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
 
         await MainActor.run {
-            // Save session manually since we have the tokens directly
-            self.accessToken = accessToken
-            self.currentUser = user
-            self.isAuthenticated = true
-
-            UserDefaults.standard.set(accessToken, forKey: accessTokenKey)
-            UserDefaults.standard.set(refreshToken, forKey: refreshTokenKey)
-            UserDefaults.standard.set(user.id, forKey: userIdKey)
-            UserDefaults.standard.set(user.email, forKey: userEmailKey)
-
-            // Reload actions after login
+            saveSession(authResponse)
             ActionsStore.shared.loadActions()
         }
 
-        // Fetch subscription status after login
         try await fetchSubscriptionStatus()
     }
 
