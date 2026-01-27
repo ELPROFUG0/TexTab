@@ -140,10 +140,16 @@ struct IconPickerView: View {
                             onSelect(icon)
                         }
                         .onHover { hovering in
+                            if hovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 hoveredIcon = hovering ? icon : nil
                             }
                         }
+                        .help(icon)
                     }
                 }
                 .padding(12)

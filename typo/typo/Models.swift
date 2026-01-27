@@ -423,37 +423,31 @@ class ActionsStore: ObservableObject {
     static let defaultActions: [Action] = [
         Action(
             name: "Fix Grammar",
-            icon: "pencil",
+            icon: "text.cursor",
             prompt: "Fix the grammar and spelling errors in the following text. Return only the corrected text without explanations:",
             shortcut: "G"
         ),
         Action(
             name: "Rephrase Text",
-            icon: "arrow.triangle.2.circlepath",
+            icon: "text.word.spacing",
             prompt: "Rephrase the following text to make it clearer and more engaging while preserving the original meaning. Return only the rephrased text:",
             shortcut: "R"
         ),
         Action(
             name: "Shorten Text",
-            icon: "arrow.down.left.and.arrow.up.right",
+            icon: "hand.pinch.fill",
             prompt: "Shorten the following text while keeping the key points and meaning. Return only the shortened text:",
             shortcut: "S"
         ),
         Action(
             name: "Formalize Tone",
-            icon: "doc.text",
+            icon: "signature",
             prompt: "Rewrite the following text in a more formal and professional tone. Return only the rewritten text:",
             shortcut: "F"
         ),
         Action(
-            name: "Translate to English",
-            icon: "globe",
-            prompt: "Translate the following text to English. Return only the translation:",
-            shortcut: "E"
-        ),
-        Action(
             name: "Translate to Spanish",
-            icon: "globe.americas",
+            icon: "translate",
             prompt: "Translate the following text to Spanish. Return only the translation:",
             shortcut: "T"
         ),

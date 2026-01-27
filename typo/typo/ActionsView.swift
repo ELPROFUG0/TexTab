@@ -177,7 +177,7 @@ struct ActionListRow: View {
         HStack(spacing: 10) {
             // Icon
             Image(systemName: action.icon)
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 18, weight: .black))
                 .foregroundColor(textGrayColor)
                 .frame(width: 24)
 
@@ -244,7 +244,7 @@ struct ActionEditorView: View {
                                 }
                             }) {
                                 Image(systemName: action.icon)
-                                    .font(.system(size: 24, weight: .bold))
+                                    .font(.system(size: 24, weight: .black))
                                     .foregroundColor(textGrayColor)
                                     .frame(width: 36, height: 36)
                             }
