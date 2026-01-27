@@ -2354,13 +2354,13 @@ struct AboutView: View {
                                 authManager.openStripePayment()
                             }) {
                                 Text("Upgrade")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.white)
+                                    .font(.nunitoRegularBold(size: 11))
+                                    .foregroundColor(appBlue)
                                     .padding(.horizontal, 12)
-                                    .padding(.vertical, 5)
+                                    .padding(.vertical, 6)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(appBlue)
+                                        Capsule()
+                                            .fill(appBlue.opacity(0.1))
                                     )
                             }
                             .buttonStyle(.plain)
@@ -2396,13 +2396,13 @@ struct AboutView: View {
                             }
                         }) {
                             Text("Check")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.nunitoRegularBold(size: 11))
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 12)
-                                .padding(.vertical, 5)
+                                .padding(.vertical, 6)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                    Capsule()
+                                        .fill(Color.gray.opacity(0.1))
                                 )
                         }
                         .buttonStyle(.plain)
@@ -2437,13 +2437,13 @@ struct AboutView: View {
                             }
                         }) {
                             Text("Contact")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.nunitoRegularBold(size: 11))
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 12)
-                                .padding(.vertical, 5)
+                                .padding(.vertical, 6)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                    Capsule()
+                                            .fill(Color.gray.opacity(0.1))
                                 )
                         }
                         .buttonStyle(.plain)
