@@ -1654,17 +1654,19 @@ class CopyNotificationWindow: NSWindow {
             currentWindow?.close()
             currentWindow = nil
 
-            // Create the notification window
+            // Create the notification view and hosting view first to measure size
+            let notificationView = CopyNotificationView(message: message, icon: icon)
+            let hostingView = NSHostingView(rootView: notificationView)
+            let fittingSize = hostingView.fittingSize
+
+            // Create the notification window with the exact content size
             let notificationWindow = CopyNotificationWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 360, height: 56),
+                contentRect: NSRect(x: 0, y: 0, width: fittingSize.width, height: fittingSize.height),
                 styleMask: [.borderless],
                 backing: .buffered,
                 defer: false
             )
 
-            // Create the notification view
-            let notificationView = CopyNotificationView(message: message, icon: icon)
-            let hostingView = NSHostingView(rootView: notificationView)
             notificationWindow.contentView = hostingView
 
             notificationWindow.isOpaque = false
@@ -1677,7 +1679,7 @@ class CopyNotificationWindow: NSWindow {
             // Position at bottom center of screen
             if let screen = NSScreen.main {
                 let screenFrame = screen.visibleFrame
-                let x = screenFrame.midX - 180
+                let x = screenFrame.midX - (fittingSize.width / 2)
                 let y = screenFrame.minY + 80
                 notificationWindow.setFrameOrigin(NSPoint(x: x, y: y))
             }
@@ -1752,6 +1754,7 @@ struct CopyNotificationView: View {
             RoundedRectangle(cornerRadius: 24)
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
         )
+        .fixedSize()
     }
 }
 
