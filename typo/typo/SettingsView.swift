@@ -2332,45 +2332,47 @@ struct AboutView: View {
                     Divider()
 
                     // Subscription row
-                    if !authManager.isPro {
-                        HStack(spacing: 14) {
-                            Image(systemName: "crown")
-                                .font(.system(size: 20))
-                                .foregroundColor(Color.gray.opacity(0.45))
-                                .frame(width: 30)
+                    HStack(spacing: 14) {
+                        Image(systemName: authManager.isPro ? "creditcard" : "crown")
+                            .font(.system(size: authManager.isPro ? 18 : 20))
+                            .foregroundColor(Color.gray.opacity(0.45))
+                            .frame(width: 30)
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Upgrade to Pro")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.primary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(authManager.isPro ? "Manage Subscription" : "Upgrade to Pro")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.primary)
 
-                                Text("Unlimited actions • $14.99/year")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            Button(action: {
-                                showPaywall = true
-                            }) {
-                                Text("Upgrade")
-                                    .font(.nunitoRegularBold(size: 11))
-                                    .foregroundColor(appBlue)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        Capsule()
-                                            .fill(appBlue.opacity(0.1))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .pointerCursor()
+                            Text(authManager.isPro ? "View billing and manage plan" : "Unlimited actions • $14.99/year")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
                         }
-                        .padding(.vertical, 12)
 
-                        Divider()
+                        Spacer()
+
+                        Button(action: {
+                            if authManager.isPro {
+                                authManager.openStripePortal()
+                            } else {
+                                showPaywall = true
+                            }
+                        }) {
+                            Text(authManager.isPro ? "Manage" : "Upgrade")
+                                .font(.nunitoRegularBold(size: 11))
+                                .foregroundColor(authManager.isPro ? .secondary : appBlue)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(authManager.isPro ? Color.gray.opacity(0.1) : appBlue.opacity(0.1))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .pointerCursor()
                     }
+                    .padding(.vertical, 12)
+
+                    Divider()
 
                     // Check for Updates row
                     HStack(spacing: 14) {

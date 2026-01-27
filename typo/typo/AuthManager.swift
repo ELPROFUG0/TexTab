@@ -307,6 +307,13 @@ class AuthManager: ObservableObject {
         }
     }
 
+    func openStripePortal() {
+        // Open Stripe customer portal for managing subscription
+        if let url = URL(string: "https://billing.stripe.com/p/login/test_00g7w03vhg3y3L2bII") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     // MARK: - Google Sign In (PKCE Flow)
 
     func signInWithGoogle() {
