@@ -42,6 +42,8 @@ struct AIModel: Identifiable, Hashable, Codable {
                specs: ModelSpecs(speed: 2, intelligence: 4, tokenUsage: 2, description: "Smaller reasoning model, balanced performance")),
 
         // Anthropic Models
+        AIModel(id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5", provider: .anthropic,
+               specs: ModelSpecs(speed: 2, intelligence: 5, tokenUsage: 1, description: "Most advanced Claude model with exceptional reasoning")),
         AIModel(id: "claude-opus-4-20250514", name: "Claude Opus 4", provider: .anthropic,
                specs: ModelSpecs(speed: 2, intelligence: 5, tokenUsage: 1, description: "Most powerful Claude model, exceptional reasoning")),
         AIModel(id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", provider: .anthropic,
@@ -56,6 +58,8 @@ struct AIModel: Identifiable, Hashable, Codable {
                specs: ModelSpecs(speed: 5, intelligence: 3, tokenUsage: 5, description: "Fastest Claude model for simple tasks")),
 
         // OpenRouter Models
+        AIModel(id: "anthropic/claude-opus-4.5", name: "Claude Opus 4.5", provider: .openrouter,
+               specs: ModelSpecs(speed: 2, intelligence: 5, tokenUsage: 1, description: "Most advanced Claude via OpenRouter")),
         AIModel(id: "anthropic/claude-opus-4", name: "Claude Opus 4", provider: .openrouter,
                specs: ModelSpecs(speed: 2, intelligence: 5, tokenUsage: 1, description: "Most powerful Claude via OpenRouter")),
         AIModel(id: "anthropic/claude-sonnet-4", name: "Claude Sonnet 4", provider: .openrouter,
