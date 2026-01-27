@@ -41,14 +41,12 @@ func promptRequiresWebSearch(_ prompt: String) -> Bool {
 struct PopoverView: View {
     @StateObject private var store = ActionsStore.shared
     @StateObject private var textManager = CapturedTextManager.shared
-    @State private var searchText = ""
     @State private var selectedIndex = 0
     @State private var isProcessing = false
     @State private var resultText: String?
     @State private var resultImage: NSImage?
     @State private var activeAction: Action?
     @State private var shouldScrollToSelection = false
-    @FocusState private var isSearchFocused: Bool
 
     // Image converter states
     @State private var clipboardImage: NSImage?
@@ -63,13 +61,6 @@ struct PopoverView: View {
     var onClose: () -> Void
     var onOpenSettings: () -> Void
     var initialAction: Action?
-
-    var filteredActions: [Action] {
-        if searchText.isEmpty {
-            return store.actions
-        }
-        return store.actions.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
-    }
 
     var popoverWidth: CGFloat {
         initialAction != nil ? 560 : 320
@@ -150,28 +141,13 @@ struct PopoverView: View {
                 showChat = true
             })
             .padding(.horizontal, 10)
-            .padding(.top, 10)
-            .padding(.bottom, 4)
-
-            // Search bar
-            SearchBarView(
-                searchText: $searchText,
-                isSearchFocused: $isSearchFocused,
-                onSubmit: selectCurrentAction
-            )
-            .padding(.horizontal, 10)
-            .padding(.bottom, 6)
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    isSearchFocused = true
-                }
-            }
+            .padding(.vertical, 10)
 
             // Actions list
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 2) {
-                        ForEach(Array(filteredActions.enumerated()), id: \.element.id) { index, action in
+                        ForEach(Array(store.actions.enumerated()), id: \.element.id) { index, action in
                             ActionRow(
                                 action: action,
                                 isSelected: index == selectedIndex
@@ -192,14 +168,14 @@ struct PopoverView: View {
                         }
 
                         // New Action button
-                        NewActionRow(isSelected: filteredActions.count == selectedIndex)
+                        NewActionRow(isSelected: store.actions.count == selectedIndex)
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 onOpenSettings()
                             }
                             .onHover { hovering in
                                 if hovering {
-                                    selectedIndex = filteredActions.count
+                                    selectedIndex = store.actions.count
                                     NSCursor.pointingHand.push()
                                 } else {
                                     NSCursor.pop()
@@ -235,6 +211,9 @@ struct PopoverView: View {
                 HStack(spacing: 4) {
                     KeyboardKey("↑")
                     KeyboardKey("↓")
+                    Text("navigate")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
@@ -257,7 +236,7 @@ struct PopoverView: View {
         }
         .onKeyPress(.downArrow) {
             shouldScrollToSelection = true
-            selectedIndex = min(filteredActions.count, selectedIndex + 1)
+            selectedIndex = min(store.actions.count, selectedIndex + 1)
             return .handled
         }
         .onKeyPress(.escape) {
@@ -997,8 +976,8 @@ struct PopoverView: View {
     // MARK: - Actions
 
     func selectCurrentAction() {
-        if selectedIndex < filteredActions.count {
-            executeAction(filteredActions[selectedIndex])
+        if selectedIndex < store.actions.count {
+            executeAction(store.actions[selectedIndex])
         } else {
             onOpenSettings()
         }
@@ -1181,43 +1160,6 @@ struct PopoverView: View {
                 }
             }
         }
-    }
-}
-
-// MARK: - Search Bar View
-
-struct SearchBarView: View {
-    @Environment(\.colorScheme) var colorScheme
-    @Binding var searchText: String
-    var isSearchFocused: FocusState<Bool>.Binding
-    var onSubmit: () -> Void
-
-    var backgroundColor: Color {
-        colorScheme == .light
-            ? Color(red: 241/255, green: 241/255, blue: 239/255)
-            : Color(white: 1).opacity(0.1)
-    }
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.gray)
-                .font(.system(size: 14))
-
-            TextField("Search actions...", text: $searchText)
-                .textFieldStyle(.plain)
-                .font(.nunitoRegularBold(size: 14))
-                .focused(isSearchFocused)
-                .onSubmit {
-                    onSubmit()
-                }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(backgroundColor)
-        )
     }
 }
 
