@@ -66,33 +66,24 @@ struct AIModel: Identifiable, Hashable, Codable {
                specs: ModelSpecs(speed: 4, intelligence: 5, tokenUsage: 3, description: "GPT-4o via OpenRouter")),
         AIModel(id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: .openrouter,
                specs: ModelSpecs(speed: 5, intelligence: 4, tokenUsage: 5, description: "Fast GPT-4o Mini via OpenRouter")),
-        AIModel(id: "google/gemini-pro-1.5", name: "Gemini Pro 1.5", provider: .openrouter,
-               specs: ModelSpecs(speed: 4, intelligence: 4, tokenUsage: 4, description: "Google's multimodal model")),
         AIModel(id: "meta-llama/llama-3.1-405b-instruct", name: "Llama 3.1 405B", provider: .openrouter,
                specs: ModelSpecs(speed: 2, intelligence: 5, tokenUsage: 2, description: "Largest open-source model")),
         AIModel(id: "mistralai/mistral-large", name: "Mistral Large", provider: .openrouter,
                specs: ModelSpecs(speed: 3, intelligence: 4, tokenUsage: 3, description: "Mistral's flagship model")),
 
         // DeepSeek Models
-        AIModel(id: "deepseek/deepseek-r1", name: "DeepSeek R1", provider: .openrouter,
-               specs: ModelSpecs(speed: 2, intelligence: 5, tokenUsage: 4, description: "Advanced reasoning model, very affordable")),
         AIModel(id: "deepseek/deepseek-chat", name: "DeepSeek Chat", provider: .openrouter,
                specs: ModelSpecs(speed: 4, intelligence: 4, tokenUsage: 5, description: "Fast and capable chat model")),
         AIModel(id: "deepseek/deepseek-r1-distill-llama-70b", name: "DeepSeek R1 Distill 70B", provider: .openrouter,
                specs: ModelSpecs(speed: 3, intelligence: 4, tokenUsage: 5, description: "Distilled reasoning model")),
 
         // Free Models
-        AIModel(id: "google/gemini-2.0-flash-exp:free", name: "Gemini 2.0 Flash (Free)", provider: .openrouter,
-               specs: ModelSpecs(speed: 5, intelligence: 4, tokenUsage: 5, description: "Free experimental Gemini model")),
         AIModel(id: "google/gemma-3-27b-it:free", name: "Gemma 3 27B (Free)", provider: .openrouter,
                specs: ModelSpecs(speed: 4, intelligence: 4, tokenUsage: 5, description: "Free Google multimodal model")),
         AIModel(id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B (Free)", provider: .openrouter,
                specs: ModelSpecs(speed: 4, intelligence: 4, tokenUsage: 5, description: "Free multilingual Llama model")),
         AIModel(id: "deepseek/deepseek-r1-0528:free", name: "DeepSeek R1 (Free)", provider: .openrouter,
                specs: ModelSpecs(speed: 3, intelligence: 5, tokenUsage: 5, description: "Free open-source reasoning model")),
-        AIModel(id: "qwen/qwen3-coder:free", name: "Qwen3 Coder (Free)", provider: .openrouter,
-               specs: ModelSpecs(speed: 4, intelligence: 4, tokenUsage: 5, description: "Free code-focused model")),
-
         // Perplexity Models
         AIModel(id: "llama-3.1-sonar-small-128k-online", name: "Sonar Small", provider: .perplexity,
                specs: ModelSpecs(speed: 5, intelligence: 3, tokenUsage: 5, description: "Fast online search model")),
