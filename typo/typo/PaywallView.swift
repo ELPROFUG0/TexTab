@@ -139,41 +139,49 @@ struct PaywallView: View {
                 .fill(accentGreen)
         )
         .overlay(
-            // Save badge - positioned at top, sticking out with inner gradient highlight
-            HStack(spacing: 6) {
-                Text("Save 33%")
-                    .font(.nunitoBold(size: 11))
-                    .foregroundColor(.white)
+            // Save badge con flama que sobresale
+            ZStack {
+                // Badge base
+                HStack(spacing: 4) {
+                    Text("Save 33%")
+                        .font(.nunitoBold(size: 11))
+                        .foregroundColor(.white)
 
-                Text("🔥")
-                    .font(.system(size: 10))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(
-                ZStack {
-                    // Main badge background
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(hex: "262626"))
-
-                    // Top inner highlight/gradient for 3D effect
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.25),
-                                    Color.white.opacity(0.0)
-                                ],
-                                startPoint: .top,
-                                endPoint: .center
-                            )
-                        )
+                    // Espacio para la flama
+                    Color.clear.frame(width: 14, height: 1)
                 }
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color(hex: "222222"), lineWidth: 2)
-            )
+                .padding(.leading, 14)
+                .padding(.trailing, 10)
+                .padding(.vertical, 6)
+                .background(
+                    ZStack {
+                        // Main badge background
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(hex: "262626"))
+
+                        // Top inner highlight/gradient for 3D effect
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.25),
+                                        Color.white.opacity(0.0)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .center
+                                )
+                            )
+                    }
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color(hex: "222222"), lineWidth: 2)
+                )
+
+                // Flama en capa superior (fuera del clipping del badge)
+                AnimatedFlameIcon()
+                    .offset(x: 32, y: -6)
+            }
             .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
             .offset(y: -12),
             alignment: .top
@@ -230,6 +238,19 @@ struct PaywallModifier: ViewModifier {
 extension View {
     func paywall(isPresented: Binding<Bool>, onUpgrade: (() -> Void)? = nil) -> some View {
         modifier(PaywallModifier(isPresented: isPresented, onUpgrade: onUpgrade))
+    }
+}
+
+// MARK: - Animated Flame Icon (Lottie)
+
+struct AnimatedFlameIcon: View {
+    var body: some View {
+        // La animación original es 617x812, necesitamos escalarla
+        LottieView(name: "flame")
+            .frame(width: 617, height: 812)
+            .scaleEffect(0.04)
+            .frame(width: 20, height: 26)
+            .allowsHitTesting(false)
     }
 }
 
