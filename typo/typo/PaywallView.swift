@@ -226,9 +226,11 @@ struct PaywallModifier: ViewModifier {
                     .onTapGesture {
                         isPresented = false
                     }
+                    .zIndex(1)
 
                 PaywallView(isPresented: $isPresented, onUpgrade: onUpgrade)
                     .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    .zIndex(2)
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isPresented)
