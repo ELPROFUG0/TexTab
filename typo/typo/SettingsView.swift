@@ -2094,6 +2094,7 @@ class PromptImprover {
 struct AboutView: View {
     @Environment(\.colorScheme) var colorScheme
     @StateObject private var authManager = AuthManager.shared
+    @StateObject private var actionsStore = ActionsStore.shared
     @State private var mousePosition: CGPoint = .zero
     @State private var isHovering: Bool = false
     @State private var showPaywall: Bool = false
@@ -2106,6 +2107,41 @@ struct AboutView: View {
     // Card color - #FBBAC4 (pink from onboarding)
     private var cardColor: Color {
         Color(hex: "FBBAC4")
+    }
+
+    // Number of actions
+    private var actionsCount: Int {
+        actionsStore.actions.count
+    }
+
+    // Days since account creation
+    private var daysSinceCreation: Int {
+        guard let createdAtString = authManager.currentUser?.createdAt else { return 0 }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let createdDate = formatter.date(from: createdAtString) else {
+            // Try without fractional seconds
+            formatter.formatOptions = [.withInternetDateTime]
+            guard let createdDate = formatter.date(from: createdAtString) else { return 0 }
+            return Calendar.current.dateComponents([.day], from: createdDate, to: Date()).day ?? 0
+        }
+        return Calendar.current.dateComponents([.day], from: createdDate, to: Date()).day ?? 0
+    }
+
+    // Member since date formatted as MM/YY
+    private var memberSinceDate: String {
+        guard let createdAtString = authManager.currentUser?.createdAt else { return "--/--" }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        var createdDate = formatter.date(from: createdAtString)
+        if createdDate == nil {
+            formatter.formatOptions = [.withInternetDateTime]
+            createdDate = formatter.date(from: createdAtString)
+        }
+        guard let date = createdDate else { return "--/--" }
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "MM/yy"
+        return displayFormatter.string(from: date)
     }
 
     var body: some View {
@@ -2136,7 +2172,7 @@ struct AboutView: View {
                                         .foregroundColor(.white.opacity(0.5))
                                         .tracking(1.0)
 
-                                    Text("01/26")
+                                    Text(memberSinceDate)
                                         .font(.system(size: 13, weight: .semibold, design: .monospaced))
                                         .foregroundColor(.white)
                                 }
@@ -2183,7 +2219,7 @@ struct AboutView: View {
                                                 .font(.system(size: 18))
                                                 .foregroundColor(.white.opacity(0.7))
 
-                                            Text("42")
+                                            Text("\(actionsCount)")
                                                 .font(.nunitoBlack(size: 24))
                                                 .foregroundColor(.white)
 
@@ -2192,7 +2228,7 @@ struct AboutView: View {
                                                 .foregroundColor(.white.opacity(0.7))
                                         }
 
-                                        Text("Fixes")
+                                        Text("Actions")
                                             .font(.system(size: 10, weight: .medium))
                                             .foregroundColor(.white.opacity(0.6))
                                     }
@@ -2210,7 +2246,7 @@ struct AboutView: View {
                                                 .font(.system(size: 18))
                                                 .foregroundColor(.white.opacity(0.7))
 
-                                            Text("14")
+                                            Text("\(daysSinceCreation)")
                                                 .font(.nunitoBlack(size: 24))
                                                 .foregroundColor(.white)
 

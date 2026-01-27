@@ -107,6 +107,7 @@ class AuthManager: ObservableObject {
     private let refreshTokenKey = "typo_refresh_token"
     private let userIdKey = "typo_user_id"
     private let userEmailKey = "typo_user_email"
+    private let userCreatedAtKey = "typo_user_created_at"
     private let subscriptionStatusKey = "typo_subscription_status"
     private let subscriptionEndKey = "typo_subscription_end"
 
@@ -220,6 +221,7 @@ class AuthManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: refreshTokenKey)
         UserDefaults.standard.removeObject(forKey: userIdKey)
         UserDefaults.standard.removeObject(forKey: userEmailKey)
+        UserDefaults.standard.removeObject(forKey: userCreatedAtKey)
         UserDefaults.standard.removeObject(forKey: subscriptionStatusKey)
         UserDefaults.standard.removeObject(forKey: subscriptionEndKey)
 
@@ -461,6 +463,9 @@ class AuthManager: ObservableObject {
         UserDefaults.standard.set(response.refreshToken, forKey: refreshTokenKey)
         UserDefaults.standard.set(response.user.id, forKey: userIdKey)
         UserDefaults.standard.set(response.user.email, forKey: userEmailKey)
+        if let createdAt = response.user.createdAt {
+            UserDefaults.standard.set(createdAt, forKey: userCreatedAtKey)
+        }
     }
 
     private func loadSession() {
@@ -468,7 +473,8 @@ class AuthManager: ObservableObject {
            let userId = UserDefaults.standard.string(forKey: userIdKey) {
             accessToken = token
             let email = UserDefaults.standard.string(forKey: userEmailKey)
-            currentUser = SupabaseUser(id: userId, email: email, createdAt: nil)
+            let createdAt = UserDefaults.standard.string(forKey: userCreatedAtKey)
+            currentUser = SupabaseUser(id: userId, email: email, createdAt: createdAt)
             isAuthenticated = true
 
             // Load cached subscription status
