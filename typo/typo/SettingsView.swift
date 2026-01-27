@@ -91,11 +91,6 @@ struct SettingsView: View {
                         selectedTab = 4
                     }
                 }
-                TabTextButton(title: "Account", isSelected: selectedTab == 5) {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        selectedTab = 5
-                    }
-                }
             }
             .padding(.vertical, 12)
 
@@ -119,8 +114,6 @@ struct SettingsView: View {
                     PluginsMarketplaceView()
                 case 4:
                     AboutView()
-                case 5:
-                    AccountView()
                 default:
                     EmptyView()
                 }
@@ -2100,6 +2093,7 @@ class PromptImprover {
 
 struct AboutView: View {
     @Environment(\.colorScheme) var colorScheme
+    @StateObject private var authManager = AuthManager.shared
     @State private var mousePosition: CGPoint = .zero
     @State private var isHovering: Bool = false
 
@@ -2281,52 +2275,181 @@ struct AboutView: View {
             }
             .frame(width: 280)
 
-            // Right side - Buttons
+            // Right side - Account info and Buttons
             VStack(alignment: .leading, spacing: 0) {
-                // Action rows - matching alado design
+                // Account section
                 VStack(spacing: 0) {
-                    // Manage Account row
-                    AboutActionRow(
-                        icon: "person.circle",
-                        title: "Manage Account",
-                        subtitle: "Manage your subscription and account settings",
-                        buttonTitle: "Manage",
-                        action: {
-                            if let url = URL(string: "https://typo.app/account") {
-                                NSWorkspace.shared.open(url)
+                    // User info row
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(appBlue.opacity(0.1))
+                                .frame(width: 32, height: 32)
+
+                            Text(String(authManager.currentUser?.email?.prefix(1).uppercased() ?? "U"))
+                                .font(.nunitoBold(size: 14))
+                                .foregroundColor(appBlue)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(authManager.currentUser?.email ?? "User")
+                                .font(.nunitoBold(size: 14))
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+
+                            HStack(spacing: 4) {
+                                Image(systemName: authManager.isPro ? "checkmark.seal.fill" : "person.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(authManager.isPro ? .green : .secondary)
+
+                                Text(authManager.isPro ? "Pro Member" : "Free Plan")
+                                    .font(.nunitoRegularBold(size: 11))
+                                    .foregroundColor(authManager.isPro ? .green : .secondary)
                             }
                         }
-                    )
+
+                        Spacer()
+
+                        Button(action: {
+                            authManager.signOut()
+                        }) {
+                            Text("Sign Out")
+                                .font(.nunitoRegularBold(size: 11))
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.red.opacity(0.1))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .pointerCursor()
+                    }
+                    .padding(.vertical, 12)
 
                     Divider()
 
+                    // Subscription row
+                    if !authManager.isPro {
+                        HStack(spacing: 14) {
+                            Image(systemName: "crown")
+                                .font(.system(size: 20))
+                                .foregroundColor(Color.gray.opacity(0.45))
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Upgrade to Pro")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.primary)
+
+                                Text("Unlimited actions • $14.99/year")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Button(action: {
+                                authManager.openStripePayment()
+                            }) {
+                                Text("Upgrade")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 5)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(appBlue)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .pointerCursor()
+                        }
+                        .padding(.vertical, 12)
+
+                        Divider()
+                    }
+
                     // Check for Updates row
-                    AboutActionRow(
-                        icon: "arrow.triangle.2.circlepath",
-                        title: "Check for Updates",
-                        subtitle: "Keep TexTab up to date with the latest features.",
-                        buttonTitle: "Check",
-                        action: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 18))
+                            .foregroundColor(Color.gray.opacity(0.45))
+                            .frame(width: 30)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Check for Updates")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            Text("Keep TexTab up to date")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        Button(action: {
                             if let url = URL(string: "https://typo.app/updates") {
                                 NSWorkspace.shared.open(url)
                             }
+                        }) {
+                            Text("Check")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                )
                         }
-                    )
+                        .buttonStyle(.plain)
+                        .pointerCursor()
+                    }
+                    .padding(.vertical, 12)
 
                     Divider()
 
                     // Contact Support row
-                    AboutActionRow(
-                        icon: "envelope",
-                        title: "Contact Support",
-                        subtitle: "Need help? Get in touch with our support team.",
-                        buttonTitle: "Contact",
-                        action: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "envelope")
+                            .font(.system(size: 18))
+                            .foregroundColor(Color.gray.opacity(0.45))
+                            .frame(width: 30)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Contact Support")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            Text("Get help from our team")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        Button(action: {
                             if let url = URL(string: "https://typo.app/support") {
                                 NSWorkspace.shared.open(url)
                             }
+                        }) {
+                            Text("Contact")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                )
                         }
-                    )
+                        .buttonStyle(.plain)
+                        .pointerCursor()
+                    }
+                    .padding(.vertical, 12)
                 }
 
                 Spacer().frame(height: 24)
