@@ -1672,7 +1672,7 @@ class CopyNotificationWindow: NSWindow {
             notificationWindow.isOpaque = false
             notificationWindow.backgroundColor = .clear
             notificationWindow.level = .floating
-            notificationWindow.hasShadow = false
+            notificationWindow.hasShadow = true
             notificationWindow.ignoresMouseEvents = true
             notificationWindow.isReleasedWhenClosed = false
 
@@ -1749,12 +1749,6 @@ struct CopyNotificationView: View {
             RoundedRectangle(cornerRadius: 24)
                 .fill(Color(NSColor.windowBackgroundColor))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 4)
-        .fixedSize()
     }
 }
 
