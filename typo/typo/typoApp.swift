@@ -241,7 +241,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.backgroundColor = .clear
         panel.level = .floating
         panel.contentView = NSHostingView(rootView: contentView)
-        panel.hasShadow = true
+        panel.hasShadow = false  // Shadow handled by SwiftUI
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = false
 
@@ -622,7 +622,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.backgroundColor = .clear
         panel.level = .floating
         panel.contentView = NSHostingView(rootView: contentView)
-        panel.hasShadow = true
+        panel.hasShadow = false  // Shadow handled by SwiftUI
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = false
 
