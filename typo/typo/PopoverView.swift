@@ -264,6 +264,7 @@ struct PopoverView: View {
                     .foregroundColor(.secondary)
                     .lineLimit(2)
                     .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
