@@ -86,58 +86,9 @@ struct PopoverView: View {
     }
 
     var body: some View {
-        Group {
-            if !authManager.isAuthenticated {
-                // Show login required message when not authenticated
-                loginRequiredPopup
-            } else if showChat {
-                // Chat view
-                ChatView(onClose: {
-                    showChat = false
-                })
-                .onAppear {
-                    // Notify AppDelegate to suspend click-outside monitor
-                    NotificationCenter.default.post(name: NSNotification.Name("ChatOpened"), object: nil)
-                }
-                .onDisappear {
-                    // Notify AppDelegate to restore click-outside monitor
-                    NotificationCenter.default.post(name: NSNotification.Name("ChatClosed"), object: nil)
-                }
-            } else {
-                VStack(spacing: 0) {
-                    if showImageConverter, let action = activeAction {
-                        // Image converter view
-                        imageConverterView(action: action)
-                    } else if let image = resultImage, let action = activeAction {
-                        // Image result view (for plugins like QR generator)
-                        imageResultView(image: image, action: action)
-                    } else if let result = resultText, let action = activeAction {
-                        // Text result view
-                        resultView(result: result, action: action)
-                    } else if let action = activeAction, isProcessing {
-                        // Loading view with skeleton
-                        loadingView(action: action)
-                    } else if let action = initialAction, activeAction == nil {
-                        // Initial loading state when action is provided but not yet started
-                        loadingView(action: action)
-                    } else if initialAction == nil {
-                        // Main popup view (only when no initial action)
-                        mainView
-                    }
-                }
-                .frame(width: popoverWidth)
-                .background(Color(NSColor.windowBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
-            }
-        }
-        .preferredColorScheme(savedColorScheme)
-        .paywall(isPresented: $showPaywall)
-        .onAppear {
+        popoverContent
+            .paywall(isPresented: $showPaywall)
+            .onAppear {
             // Reset all states when popup appears
             clipboardImage = nil
             showImageConverter = false
@@ -156,6 +107,45 @@ struct PopoverView: View {
                     isQuickPromptFocused = true
                 }
             }
+        }
+    }
+
+    // MARK: - Popover Content (no opaque background leaking through corners)
+
+    @ViewBuilder
+    private var popoverContent: some View {
+        if !authManager.isAuthenticated {
+            loginRequiredPopup
+        } else if showChat {
+            ChatView(onClose: {
+                showChat = false
+            })
+            .preferredColorScheme(savedColorScheme)
+            .onAppear {
+                NotificationCenter.default.post(name: NSNotification.Name("ChatOpened"), object: nil)
+            }
+            .onDisappear {
+                NotificationCenter.default.post(name: NSNotification.Name("ChatClosed"), object: nil)
+            }
+        } else {
+            VStack(spacing: 0) {
+                if showImageConverter, let action = activeAction {
+                    imageConverterView(action: action)
+                } else if let image = resultImage, let action = activeAction {
+                    imageResultView(image: image, action: action)
+                } else if let result = resultText, let action = activeAction {
+                    resultView(result: result, action: action)
+                } else if let action = activeAction, isProcessing {
+                    loadingView(action: action)
+                } else if let action = initialAction, activeAction == nil {
+                    loadingView(action: action)
+                } else if initialAction == nil {
+                    mainView
+                }
+            }
+            .frame(width: popoverWidth)
+            .background(Color(NSColor.windowBackgroundColor))
+            .preferredColorScheme(savedColorScheme)
         }
     }
 
@@ -214,12 +204,7 @@ struct PopoverView: View {
         }
         .frame(width: 320)
         .background(Color(NSColor.windowBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
+        .preferredColorScheme(savedColorScheme)
         .onKeyPress(.escape) {
             onClose()
             return .handled

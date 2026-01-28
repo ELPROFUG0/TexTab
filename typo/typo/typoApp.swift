@@ -242,8 +242,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.level = .floating
-        panel.contentView = NSHostingView(rootView: contentView)
-        panel.hasShadow = false  // Shadow handled by SwiftUI
+        let hostingView0 = NSHostingView(rootView: contentView)
+        hostingView0.wantsLayer = true
+        hostingView0.layer?.cornerRadius = 12
+        hostingView0.layer?.masksToBounds = true
+        panel.contentView = hostingView0
+        panel.hasShadow = true  // Native shadow since we mask corners at AppKit level
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = false
 
@@ -666,8 +670,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.level = .floating
-        panel.contentView = NSHostingView(rootView: contentView)
-        panel.hasShadow = false  // Shadow handled by SwiftUI
+        let hostingView = NSHostingView(rootView: contentView)
+        hostingView.wantsLayer = true
+        hostingView.layer?.cornerRadius = 12
+        hostingView.layer?.masksToBounds = true
+        panel.contentView = hostingView
+        panel.hasShadow = true  // Native shadow since we mask corners at AppKit level
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = false
 
