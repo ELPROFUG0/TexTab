@@ -239,7 +239,7 @@ struct PopoverView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
 
-                TextField("Custom prompt...", text: $quickPromptText)
+                TextField("Tell AI what to do...", text: $quickPromptText)
                     .textFieldStyle(.plain)
                     .font(.nunitoRegularBold(size: 14))
                     .foregroundColor(.primary)
@@ -437,7 +437,7 @@ struct PopoverView: View {
 
         globalAppDelegate?.pendingAction = quickAction
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            globalAppDelegate?.showPopoverWithAction()
+            globalAppDelegate?.showPopoverWithAction(skipCapture: true)
         }
     }
 

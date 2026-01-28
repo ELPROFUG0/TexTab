@@ -437,12 +437,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return keyMap[char]
     }
 
-    func showPopoverWithAction() {
+    func showPopoverWithAction(skipCapture: Bool = false) {
         // Guardar la app activa antes de mostrar el popup
         previousActiveApp = NSWorkspace.shared.frontmostApplication
 
         // Capturar texto seleccionado antes de mostrar el popup
-        captureSelectedText()
+        // Skip if text was already captured (e.g. from quick prompt)
+        if !skipCapture {
+            captureSelectedText()
+        }
 
         // Recrear la ventana con la acción pendiente
         popoverWindow = nil
