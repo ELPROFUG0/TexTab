@@ -9,6 +9,7 @@ import Foundation
 import Combine
 import AppKit
 import CryptoKit
+import IOKit
 
 // MARK: - Supabase Auth Models
 
@@ -46,6 +47,7 @@ struct UserProfile: Codable {
     let subscriptionStatus: String?
     let stripeCustomerId: String?
     let currentPeriodEnd: String?
+    let deviceId: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -53,6 +55,7 @@ struct UserProfile: Codable {
         case subscriptionStatus = "subscription_status"
         case stripeCustomerId = "stripe_customer_id"
         case currentPeriodEnd = "current_period_end"
+        case deviceId = "device_id"
     }
 }
 
@@ -172,6 +175,7 @@ class AuthManager: ObservableObject {
             // Load default actions for new user
             ActionsStore.shared.loadActions()
         }
+        await saveDeviceId()
     }
 
     // MARK: - Sign In
@@ -220,6 +224,7 @@ class AuthManager: ObservableObject {
             // Reload actions after login (loads defaults if empty)
             ActionsStore.shared.loadActions()
         }
+        await saveDeviceId()
 
         // Fetch subscription status after login
         try await fetchSubscriptionStatus()
@@ -318,7 +323,10 @@ class AuthManager: ObservableObject {
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-                let body = ["email": email]
+                var body: [String: String] = ["email": email]
+                if let deviceId = Self.hardwareUUID {
+                    body["device_id"] = deviceId
+                }
                 request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
                 let (data, response) = try await URLSession.shared.data(for: request)
@@ -440,6 +448,7 @@ class AuthManager: ObservableObject {
             saveSession(authResponse)
             ActionsStore.shared.loadActions()
         }
+        await saveDeviceId()
 
         try await fetchSubscriptionStatus()
     }
@@ -485,6 +494,34 @@ class AuthManager: ObservableObject {
     }
 
     // MARK: - Private Helpers
+
+    // MARK: - Device ID
+
+    static var hardwareUUID: String? {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
+        defer { IOObjectRelease(service) }
+        guard let uuid = IORegistryEntryCreateCFProperty(service, "IOPlatformUUID" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? String else {
+            return nil
+        }
+        return uuid
+    }
+
+    private func saveDeviceId() async {
+        guard let token = accessToken, let userId = currentUser?.id, let deviceId = Self.hardwareUUID else { return }
+
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue(supabaseAnonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body = ["device_id": deviceId]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        _ = try? await URLSession.shared.data(for: request)
+    }
 
     private func saveSession(_ response: AuthResponse) {
         accessToken = response.accessToken

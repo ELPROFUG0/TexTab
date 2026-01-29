@@ -25,7 +25,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email } = await req.json()
+    const { email, device_id } = await req.json()
 
     if (!email) {
       return new Response(JSON.stringify({ error: 'Email is required' }), {
@@ -34,16 +34,30 @@ serve(async (req) => {
       })
     }
 
-    console.log('Creating checkout for:', email)
+    console.log('Creating checkout for:', email, 'device:', device_id)
 
-    // Check if user already had a subscription (has stripe_customer_id)
+    // Check if this user already had a subscription (has stripe_customer_id)
     const { data: profile } = await supabase
       .from('profiles')
       .select('stripe_customer_id')
       .eq('email', email)
       .single()
 
-    const hasHadTrial = profile?.stripe_customer_id != null
+    let hasHadTrial = profile?.stripe_customer_id != null
+
+    // Check if any other account on this device already used a trial
+    if (!hasHadTrial && device_id) {
+      const { data: deviceProfiles } = await supabase
+        .from('profiles')
+        .select('stripe_customer_id')
+        .eq('device_id', device_id)
+        .not('stripe_customer_id', 'is', null)
+
+      if (deviceProfiles && deviceProfiles.length > 0) {
+        hasHadTrial = true
+        console.log('Trial blocked: device already used trial with another account')
+      }
+    }
 
     console.log('Has had trial:', hasHadTrial)
 
