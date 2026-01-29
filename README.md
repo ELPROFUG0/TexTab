@@ -4,10 +4,15 @@ A macOS menu bar app for quick AI-powered text actions and utility plugins.
 
 Select any text, hit a shortcut, and get instant grammar fixes, rephrasing, translations, and more — without leaving your current app.
 
-https://github.com/user-attachments/assets/paso2.2.mp4
+<!-- VIDEO: drag your paso2.2 video here using GitHub's web editor and it will embed automatically -->
 
-![TexTab Screenshot 1](screenshots/screenshot1.png)
-![TexTab Screenshot 2](screenshots/screenshot2.png)
+<p align="center">
+  <img src="screenshots/screenshot1.png" width="600" alt="TexTab main popup">
+</p>
+
+<p align="center">
+  <img src="screenshots/screenshot2.png" width="600" alt="TexTab settings">
+</p>
 
 ## What it does
 
