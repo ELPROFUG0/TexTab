@@ -82,15 +82,15 @@ struct SupabaseError: Codable {
 class AuthManager: ObservableObject {
     static let shared = AuthManager()
 
-    // Supabase configuration
-    private let supabaseURL = "https://ywbrvymvyndeixorggkx.supabase.co"
-    private let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3YnJ2eW12eW5kZWl4b3JnZ2t4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NzUzNzIsImV4cCI6MjA4NTA1MTM3Mn0.kbQ9_WsHHdhVXqqk-smwNb2K7gQkz7b1i8l2YwgOGRY"
+    // Supabase configuration (loaded from Secrets.swift)
+    private let supabaseURL = Secrets.supabaseURL
+    private let supabaseAnonKey = Secrets.supabaseAnonKey
 
     // Edge Function for dynamic checkout
-    private let createCheckoutURL: String = "https://ywbrvymvyndeixorggkx.supabase.co/functions/v1/create-checkout"
+    private let createCheckoutURL = Secrets.createCheckoutURL
 
     // OAuth redirect URI - GitHub Pages callback page
-    private let redirectURI = "https://elprofug0.github.io/textab-auth/auth/callback.html"
+    private let redirectURI = Secrets.redirectURI
 
     // PKCE code verifier key
     private let codeVerifierKey = "typo_code_verifier"
@@ -351,7 +351,7 @@ class AuthManager: ObservableObject {
 
     func openStripePortal() {
         // Open Stripe customer portal for managing subscription
-        if let url = URL(string: "https://billing.stripe.com/p/login/test_00g7w03vhg3y3L2bII") {
+        if let url = URL(string: Secrets.stripePortalURL) {
             NSWorkspace.shared.open(url)
         }
     }

@@ -1,0 +1,35 @@
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Secrets (DO NOT commit real credentials)
+typo/typo/Secrets.swift
+
+# Supabase local
+supabase/.temp/
+supabase/supabase/.temp/
+.temp/
+
+# CocoaPods (if used)
+Pods/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Misc
+*.ipa
+*.dSYM.zip
+*.dSYM
