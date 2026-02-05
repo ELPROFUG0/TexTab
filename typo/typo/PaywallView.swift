@@ -183,7 +183,8 @@ struct PaywallView: View {
                     .offset(x: 32, y: -6)
             }
             .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-            .offset(y: -12),
+            .offset(y: -12)
+            .allowsHitTesting(false),
             alignment: .top
         )
         .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 10)

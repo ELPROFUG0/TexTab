@@ -322,6 +322,7 @@ class AuthManager: ObservableObject {
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("Bearer \(Secrets.supabaseAnonKey)", forHTTPHeaderField: "Authorization")
 
                 var body: [String: String] = ["email": email]
                 if let deviceId = Self.hardwareUUID {
@@ -332,14 +333,13 @@ class AuthManager: ObservableObject {
                 let (data, response) = try await URLSession.shared.data(for: request)
 
                 guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                    print("Checkout error: bad response")
                     return
                 }
 
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let checkoutURLString = json["url"] as? String,
                    let checkoutURL = URL(string: checkoutURLString) {
-                    _ = await MainActor.run {
+                    await MainActor.run {
                         NSWorkspace.shared.open(checkoutURL)
                     }
                 }

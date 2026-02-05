@@ -317,9 +317,10 @@ struct GeneralSettingsView: View {
                     }
                 }
 
+                #if DEBUG
                 Divider()
 
-                // Developer Section (Testing)
+                // Developer Section (Testing) - Only visible in debug builds
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Developer")
                         .font(.nunitoBold(size: 18))
@@ -359,6 +360,7 @@ struct GeneralSettingsView: View {
                         .buttonStyle(.plain)
                     }
                 }
+                #endif
 
                 Spacer()
             }

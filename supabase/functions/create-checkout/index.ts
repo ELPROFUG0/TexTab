@@ -75,6 +75,9 @@ serve(async (req) => {
       params.append('subscription_data[trial_period_days]', '3')
     }
 
+    // Allow promotion codes in checkout
+    params.append('allow_promotion_codes', 'true')
+
     // Call Stripe API directly with fetch (avoids Deno/esm.sh timeout issues)
     const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
