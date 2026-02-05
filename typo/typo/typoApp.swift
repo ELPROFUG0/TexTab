@@ -444,11 +444,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showPopoverWithAction(skipCapture: Bool = false) {
         // Guardar la app activa antes de mostrar el popup
-        previousActiveApp = NSWorkspace.shared.frontmostApplication
-
-        // Capturar texto seleccionado antes de mostrar el popup
-        // Skip if text was already captured (e.g. from quick prompt)
+        // Skip if reopening from main popup (preserves original previousActiveApp)
         if !skipCapture {
+            previousActiveApp = NSWorkspace.shared.frontmostApplication
+            // Capturar texto seleccionado antes de mostrar el popup
             captureSelectedText()
         }
 
@@ -606,7 +605,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Restaurar el foco a la app anterior
         if let previousApp = previousActiveApp {
-            previousApp.activate()
+            previousApp.activate(options: .activateIgnoringOtherApps)
         }
     }
 
@@ -620,7 +619,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Restaurar el foco a la app anterior y pegar
         if let previousApp = previousActiveApp {
-            previousApp.activate()
+            previousApp.activate(options: .activateIgnoringOtherApps)
 
             // Esperar a que la app anterior tenga el foco
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {

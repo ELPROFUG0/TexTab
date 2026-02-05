@@ -1182,7 +1182,7 @@ struct PopoverView: View {
             onClose()
             globalAppDelegate?.pendingAction = action
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                globalAppDelegate?.showPopoverWithAction()
+                globalAppDelegate?.showPopoverWithAction(skipCapture: true)
             }
             return
         }
