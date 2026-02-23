@@ -339,7 +339,7 @@ class AuthManager: ObservableObject {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let checkoutURLString = json["url"] as? String,
                    let checkoutURL = URL(string: checkoutURLString) {
-                    await MainActor.run {
+                    await MainActor.run { _ =
                         NSWorkspace.shared.open(checkoutURL)
                     }
                 }
